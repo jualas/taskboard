@@ -1,0 +1,18 @@
+dartdoc:
+  categoryOrder: ["Services", "Models", "Utils", "Config"]
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/screens/**"
+    - "**/widgets/**"
+    - "**/blocs/**"
+    - "**/l10n/**"
+  showUndocumentedCategories: false
+  includeExternal: []
+  nodoc: []
+
+  # Enlaces a código fuente (ajusta el template a tu repositorio)
+  linkToSource:
+    root: "."
+    uriTemplate: "https://github.com/tu-usuario/tu-repo/blob/main/%f%#L%l%"
+

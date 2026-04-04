@@ -1,0 +1,37 @@
+{
+  "version": "0.2",
+  "language": "es,en",
+  "words": [
+    "Obtiene",
+    "proyecto",
+    "usuario",
+    "Usuario",
+    "autenticado",
+    "Obtener",
+    "desde",
+    "estudiante",
+    "encuentra",
+    "retornar",
+    "proyectos",
+    "obtener",
+    "específico",
+    "Parsea",
+    "cifpcarlos",
+    "prefs",
+    "anteprojects",
+    "Anteprojects",
+    "anteproyecto",
+    "Anteproyecto",
+    "anteproyectos",
+    "Anteproyectos"
+  ],
+  "ignoreWords": [
+    "supabase",
+    "flutter",
+    "dart"
+  ],
+  "import": [
+    "@cspell/dict-es-es/cspell-ext.json"
+  ]
+}
+

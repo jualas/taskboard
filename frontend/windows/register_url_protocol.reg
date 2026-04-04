@@ -1,0 +1,19 @@
+Windows Registry Editor Version 5.00
+
+; Registro del protocolo tfgapp:// para deep links
+; Este archivo debe ejecutarse como administrador
+
+[HKEY_CLASSES_ROOT\tfgapp]
+@="URL:TFG App Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\tfgapp\DefaultIcon]
+@="C:\\dev\\proyecto_flutter_supabase\\frontend\\build\\windows\\x64\\runner\\Release\\frontend.exe,1"
+
+[HKEY_CLASSES_ROOT\tfgapp\shell]
+
+[HKEY_CLASSES_ROOT\tfgapp\shell\open]
+
+[HKEY_CLASSES_ROOT\tfgapp\shell\open\command]
+@="\"C:\\dev\\proyecto_flutter_supabase\\frontend\\build\\windows\\x64\\runner\\Release\\frontend.exe\" \"%1\""
+

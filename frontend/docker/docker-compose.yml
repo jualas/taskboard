@@ -1,0 +1,93 @@
+# docker/docker-compose.yml
+# Stack de desarrollo: Postgres + API FastAPI + Nginx (Flutter web build montado).
+# Datos Postgres: /mnt/datos/docker/volumes/taskboard-frontend-stack-postgres/
+# Producción API+BD: /mnt/datos/docker/taskboard-api/ (no levantar ambos Postgres a la vez con el mismo directorio).
+#
+#   cp ../../backend/.env.example ../../backend/.env
+#   # JWT_SECRET, etc. (DATABASE_URL la fija este compose: @postgres)
+#   docker compose up -d --build
+# Migraciones: ver ../../backend/README.md
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: taskboard-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: taskboard
+      POSTGRES_PASSWORD: taskboard
+      POSTGRES_DB: taskboard
+    volumes:
+      - /mnt/datos/docker/volumes/taskboard-frontend-stack-postgres:/var/lib/postgresql/data
+    networks:
+      - tfg-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U taskboard -d taskboard']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  taskboard-api:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    image: taskboard-api:local
+    container_name: taskboard-api-dev
+    restart: unless-stopped
+    env_file:
+      - ../../backend/.env
+    environment:
+      # Mismo usuario/clave/BD que el servicio postgres de este archivo.
+      DATABASE_URL: postgresql://taskboard:taskboard@postgres:5432/taskboard
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - '8000'
+    networks:
+      - tfg-network
+
+  # Servidor web para archivos estáticos
+  frontend-web:
+    build:
+      context: ../  # Contexto desde el directorio raíz del proyecto frontend
+      dockerfile: docker/web/Dockerfile
+    container_name: tfg-frontend-web
+    ports:
+      - "8083:80"
+    volumes:
+      # Montar archivos build desde el directorio local
+      - ../build/web:/usr/share/nginx/html:ro
+      # Logs de nginx
+      - nginx-logs:/var/log/nginx
+    environment:
+      - NODE_ENV=production
+      - FLUTTER_WEB_PORT=8083
+    depends_on:
+      - taskboard-api
+    networks:
+      - tfg-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend-web.rule=Host(`localhost`)"
+      - "traefik.http.routers.frontend-web.entrypoints=web"
+      - "traefik.http.services.frontend-web.loadbalancer.server.port=80"
+
+networks:
+  tfg-network:
+    driver: bridge
+    name: tfg-network
+
+# Volúmenes para persistencia (Postgres usa bind mount bajo /mnt/datos/docker/volumes/)
+volumes:
+  nginx-logs:
+    driver: local

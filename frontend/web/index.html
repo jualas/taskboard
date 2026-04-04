@@ -1,0 +1,199 @@
+<!DOCTYPE html><html><head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="TaskBoard Personal - Gestión de Tareas">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="TaskBoard">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <title>TaskBoard Personal</title>
+  <link rel="manifest" href="manifest.json">
+  
+  
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+  <style id="splash-screen-style">
+    html {
+      height: 100%
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      background-color: #FFFFFF;
+          background-size: 100% 100%;
+    }
+
+    .center {
+      margin: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -ms-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+    }
+
+    .contain {
+      display:block;
+      width:100%; height:100%;
+      object-fit: contain;
+    }
+
+    .stretch {
+      display:block;
+      width:100%; height:100%;
+    }
+
+    .cover {
+      display:block;
+      width:100%; height:100%;
+      object-fit: cover;
+    }
+
+    .bottom {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      -ms-transform: translate(-50%, 0);
+      transform: translate(-50%, 0);
+    }
+
+    .bottomLeft {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+    }
+
+    .bottomRight {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+    }
+  </style>
+  <script>
+    // Aplicar estilos de posicionamiento al drawer (flutter-view)
+    function applyDrawerStyles() {
+      const flutterViews = document.querySelectorAll('flutter-view[style*="position: absolute"]');
+      flutterViews.forEach(view => {
+        const style = view.getAttribute('style') || '';
+        // Verificar si tiene las dimensiones del drawer (228px width, 547px height)
+        if (style.includes('width: 228px') && style.includes('height: 547px')) {
+          // Aplicar los ajustes de posicionamiento: top -3px, left 3px
+          const currentStyle = view.style.cssText;
+          let newStyle = currentStyle;
+          
+          // Manejar la propiedad inset (formato: top right bottom left)
+          if (newStyle.includes('inset:')) {
+            newStyle = newStyle.replace(/inset:\s*([^;]+)/, (match, insetValue) => {
+              // Parsear inset (formato: top right bottom left)
+              const parts = insetValue.trim().split(/\s+/);
+              if (parts.length === 4) {
+                // Formato: top right bottom left - aplicar cambios: top -3px, left 3px
+                return `inset: -3px ${parts[1]} ${parts[2]} 3px`;
+              } else if (parts.length === 3) {
+                // Formato: top right bottom (left implícito = right) - aplicar cambios: top -3px, left 3px
+                return `inset: -3px ${parts[1]} ${parts[2]} 3px`;
+              } else if (parts.length === 2) {
+                // Formato: top/bottom left/right - aplicar cambios: top -3px, left 3px
+                return `inset: -3px 3px`;
+              } else if (parts.length === 1) {
+                // Formato: all - aplicar cambios
+                return `inset: -3px 3px`;
+              }
+              return match;
+            });
+          } else {
+            // Si no usa inset, manejar top y left por separado
+            if (newStyle.includes('top:')) {
+              newStyle = newStyle.replace(/top:\s*[^;]+/, 'top: -3px');
+            } else {
+              newStyle += ' top: -3px;';
+            }
+            
+            if (newStyle.includes('left:')) {
+              newStyle = newStyle.replace(/left:\s*[^;]+/, 'left: 3px');
+            } else {
+              newStyle += ' left: 3px;';
+            }
+          }
+          
+          view.style.cssText = newStyle;
+        }
+      });
+    }
+    
+    // Ejecutar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyDrawerStyles);
+    } else {
+      applyDrawerStyles();
+    }
+    
+    // Observar cambios dinámicos en el DOM para aplicar estilos cuando Flutter renderice elementos
+    const observer = new MutationObserver(applyDrawerStyles);
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+    } else {
+      document.addEventListener('DOMContentLoaded', () => {
+        observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+      });
+    }
+  </script>
+  <script id="splash-screen-script">
+    function removeSplashFromWeb() {
+      document.getElementById("splash")?.remove();
+      document.getElementById("splash-branding")?.remove();
+      document.body.style.background = "transparent";
+    }
+  </script>
+  <script>
+    // Limpieza defensiva de SW/cachés antiguos para evitar mezcla de builds.
+    (async () => {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.unregister();
+        }
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      }
+    })();
+  </script>
+</head>
+<body>
+  <!-- Splash minimalista con spinner -->
+  <div id="splash" class="center" style="text-align: center;">
+    <svg width="80" height="80" viewBox="0 0 100 100" style="margin-bottom: 20px;">
+      <circle cx="50" cy="50" r="45" fill="#C45C26" />
+      <polyline points="30,50 45,65 70,35" stroke="#FDF6E3" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div style="color: #3D2914; font-family: 'Segoe UI', sans-serif; font-size: 14px;">Cargando...</div>
+  </div>
+  
+  <script src="flutter_bootstrap.js" async=""></script>
+
+
+
+</body></html>

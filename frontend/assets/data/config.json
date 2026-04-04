@@ -1,0 +1,13 @@
+{
+  "supabase": {
+    "url": "https://api-supabase.jualas.es",
+    "anonKey": "***REMOVED***",
+    "useSameOriginProxy": true,
+    "proxyPrefix": "/supabase"
+  },
+  "taskboardApi": {
+    "baseUrl": "",
+    "useSameOriginProxy": true,
+    "proxyPrefix": "/api-taskboard"
+  }
+}

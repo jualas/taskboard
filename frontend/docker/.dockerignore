@@ -1,0 +1,72 @@
+# Archivos y directorios a ignorar en Docker
+# Ubicación: docker/.dockerignore
+# Basado en .gitignore de Flutter
+
+# Archivos de build
+build/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de logs
+*.log
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Archivos de configuración local
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Archivos de testing
+coverage/
+test_driver/
+
+# Archivos de documentación (opcional)
+docs/
+*.md
+!README.md
+
+# Archivos de Docker (evitar recursión)
+docker/
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Archivos de CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Archivos de versionado
+.git/
+.gitignore
+
+# Archivos de Flutter específicos
+.flutter-plugins
+.flutter-plugins-dependencies
+flutter_*.png
+flutter_*.ico
+
+# Archivos de análisis
+analysis_options.yaml
+
+# Archivos de scripts
+scripts/

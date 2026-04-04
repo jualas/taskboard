@@ -1,0 +1,18 @@
+# Dockerfile para desarrollo de aplicación Flutter Web
+# Usando imagen base con Flutter preinstalado
+
+# stable incluye Dart >= 3.8 (requerido por pubspec: sdk ^3.8.0)
+FROM ghcr.io/cirruslabs/flutter:stable
+
+# Configurar Flutter
+RUN flutter config --no-analytics
+RUN flutter doctor
+
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Exponer puerto para desarrollo
+EXPOSE 3000
+
+# Comando por defecto para desarrollo
+CMD ["flutter", "run", "-d", "web-server", "--web-port", "3000", "--web-hostname", "0.0.0.0", "--hot"]

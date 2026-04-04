@@ -1,0 +1,35 @@
+{
+    "name": "TaskBoard Personal",
+    "short_name": "TaskBoard",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#FDF6E3",
+    "theme_color": "#3D2914",
+    "description": "Gestión Personal de Tareas",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
