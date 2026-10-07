@@ -3,7 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../blocs/blocs.dart';
 import '../../models/models.dart';
+import '../../services/ai_assistant_service.dart';
 import '../../themes/app_theme.dart';
+import '../../widgets/workspace_suggestions_sheet.dart';
+import '../../widgets/workspace_inventory_sheet.dart';
+import '../../widgets/open_in_cursor_button.dart';
+import '../../utils/export_taskboard_md.dart';
+import '../../widgets/ide_cursor_session_sheet.dart';
 
 class ProjectsListScreen extends StatefulWidget {
   const ProjectsListScreen({super.key});
@@ -126,6 +132,11 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
       appBar: AppBar(
         title: const Text('Mis Proyectos'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.inventory_2_outlined),
+            tooltip: 'Inventario workspace',
+            onPressed: () => showWorkspaceInventorySheet(context),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -322,7 +333,66 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                           ],
                         ),
                       ),
-                      const PopupMenuDivider(),
+                      if (project.workspacePath.isNotEmpty)
+                        const PopupMenuItem(
+                          value: 'cursor',
+                          child: Row(
+                            children: [
+                              Icon(Icons.terminal),
+                              SizedBox(width: 8),
+                              Text('Abrir en Cursor'),
+                            ],
+                          ),
+                        ),
+                      if (project.workspacePath.isNotEmpty)
+                        PopupMenuItem(
+                          value: 'workspace',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.folder_special_outlined),
+                              const SizedBox(width: 8),
+                              const Text('Sugerencias workspace'),
+                              if (project.pendingWorkspaceSuggestions > 0) ...[
+                                const Spacer(),
+                                CircleAvatar(
+                                  radius: 10,
+                                  backgroundColor: AppColors.accentPrimary,
+                                  child: Text(
+                                    '${project.pendingWorkspaceSuggestions}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      if (project.workspacePath.isNotEmpty)
+                        const PopupMenuItem(
+                          value: 'ide_session',
+                          child: Row(
+                            children: [
+                              Icon(Icons.content_paste_go),
+                              SizedBox(width: 8),
+                              Text('Prompt IDE (Cursor)'),
+                            ],
+                          ),
+                        ),
+                      if (project.workspacePath.isNotEmpty)
+                        const PopupMenuItem(
+                          value: 'export_md',
+                          child: Row(
+                            children: [
+                              Icon(Icons.description_outlined),
+                              SizedBox(width: 8),
+                              Text('Exportar TASKBOARD.md'),
+                            ],
+                          ),
+                        ),
+                      if (project.workspacePath.isNotEmpty)
+                        const PopupMenuDivider(),
                       if (project.canEdit)
                         const PopupMenuItem(
                           value: 'share',
@@ -373,6 +443,34 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (project.pendingWorkspaceSuggestions > 0) ...[
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: project.canEdit
+                            ? () => showWorkspaceSuggestionsSheet(
+                                  context,
+                                  project: project,
+                                )
+                            : null,
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.auto_awesome,
+                              size: 14,
+                              color: AppColors.accentPrimary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${project.pendingWorkspaceSuggestions} sugerencia(s) del workspace',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.accentPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     SizedBox(
                       height: 60,
@@ -487,6 +585,30 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
       case 'share':
         _showShareProjectDialog(project);
         break;
+      case 'workspace':
+        showWorkspaceSuggestionsSheet(context, project: project);
+        break;
+      case 'cursor':
+        OpenInCursorAction.show(
+          context,
+          workspacePath: project.workspacePath,
+          projectTitle: project.title,
+        );
+        break;
+      case 'export_md':
+        exportTaskboardMdAction(
+          context,
+          projectsService: context.read<ProjectsBloc>().projectsService,
+          project: project,
+        );
+        break;
+      case 'ide_session':
+        showIdeCursorSessionSheet(
+          context,
+          projectsService: context.read<ProjectsBloc>().projectsService,
+          project: project,
+        );
+        break;
     }
   }
 
@@ -556,49 +678,145 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
   void _showEditProjectDialog(Project project) {
     final titleController = TextEditingController(text: project.title);
     final descriptionController = TextEditingController(text: project.description);
+    final workspaceController = TextEditingController(text: project.workspacePath);
     ProjectStatus selectedStatus = project.status;
+    bool verifyingWorkspace = false;
+    String? workspacePreview;
+
+    Future<void> verifyWorkspace(StateSetter setDialogState) async {
+      final path = workspaceController.text.trim();
+      if (path.isEmpty) {
+        setDialogState(() => workspacePreview = 'Indica una ruta para verificar.');
+        return;
+      }
+      setDialogState(() {
+        verifyingWorkspace = true;
+        workspacePreview = null;
+      });
+      try {
+        final snapshot = await context
+            .read<ProjectsBloc>()
+            .projectsService
+            .previewWorkspaceSnapshot(path);
+        final summary = (snapshot['summary'] ?? '').toString().trim();
+        if (!context.mounted) return;
+        setDialogState(() {
+          workspacePreview = summary.isNotEmpty
+              ? summary
+              : 'Ruta verificada correctamente.';
+        });
+      } catch (e) {
+        if (!context.mounted) return;
+        final detail = AiAssistantService.fastApiDetailFromErrorString(e.toString());
+        setDialogState(() {
+          workspacePreview = detail ?? e.toString();
+        });
+      } finally {
+        if (context.mounted) {
+          setDialogState(() => verifyingWorkspace = false);
+        }
+      }
+    }
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Editar Proyecto'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Título',
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Título',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción',
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción',
+                  ),
+                  maxLines: 3,
                 ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<ProjectStatus>(
-                value: selectedStatus,
-                decoration: const InputDecoration(
-                  labelText: 'Estado',
+                const SizedBox(height: 16),
+                DropdownButtonFormField<ProjectStatus>(
+                  value: selectedStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Estado',
+                  ),
+                  items: ProjectStatus.values.map((status) {
+                    return DropdownMenuItem(
+                      value: status,
+                      child: Text(status.displayName),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => selectedStatus = value);
+                    }
+                  },
                 ),
-                items: ProjectStatus.values.map((status) {
-                  return DropdownMenuItem(
-                    value: status,
-                    child: Text(status.displayName),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => selectedStatus = value);
-                  }
-                },
-              ),
-            ],
+                const SizedBox(height: 16),
+                TextField(
+                  controller: workspaceController,
+                  decoration: const InputDecoration(
+                    labelText: 'Carpeta workspace',
+                    hintText: '/mnt/datos/docker/mi-stack o ~/datos/Proyectos/mi-app',
+                    helperText:
+                        'Ruta en el mini PC (git/docker). La IA la usará en el chat del proyecto.',
+                  ),
+                  minLines: 1,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: verifyingWorkspace
+                        ? null
+                        : () => verifyWorkspace(setState),
+                    icon: verifyingWorkspace
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.folder_open_outlined),
+                    label: const Text('Verificar carpeta'),
+                  ),
+                ),
+                if (workspacePreview != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    workspacePreview!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: workspacePreview!.startsWith('Carpeta workspace:')
+                              ? AppColors.textSecondary
+                              : AppColors.error,
+                        ),
+                  ),
+                ],
+                if (workspaceController.text.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      onPressed: () => OpenInCursorAction.show(
+                        context,
+                        workspacePath: workspaceController.text.trim(),
+                        projectTitle: titleController.text.trim(),
+                      ),
+                      icon: const Icon(Icons.terminal, size: 18),
+                      label: const Text('Abrir en Cursor'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -614,6 +832,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                         title: titleController.text.trim(),
                         description: descriptionController.text.trim(),
                         status: selectedStatus,
+                        workspacePath: workspaceController.text.trim(),
                       ),
                     ),
                   );

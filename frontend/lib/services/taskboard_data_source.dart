@@ -11,6 +11,39 @@ abstract class TaskboardDataSource {
 
   Future<void> deleteProject(int id);
   Future<int> getNextProjectId();
+
+  /// Vista previa del snapshot de una ruta (solo API remota).
+  Future<Map<String, dynamic>> previewWorkspaceSnapshot(String path);
+
+  /// Snapshot del workspace vinculado a un proyecto (solo API remota).
+  Future<Map<String, dynamic>> getProjectWorkspaceSnapshot(int projectId);
+
+  Future<List<WorkspaceSuggestion>> getWorkspaceSuggestions(
+    int projectId, {
+    String state = 'pending',
+  });
+
+  Future<Map<String, dynamic>> syncProjectWorkspace(int projectId);
+
+  Future<Map<String, dynamic>> exportTaskboardMd(
+    int projectId, {
+    bool dryRun = false,
+    String filename = '',
+  });
+
+  Future<IdePrompt> getIdePrompt(int projectId, {int? focusTaskId});
+
+  Future<IdePrompt> prepareIdeSession(int projectId, {int? focusTaskId});
+
+  Future<Map<String, dynamic>> applyWorkspaceSuggestion(
+    int projectId,
+    int suggestionId,
+  );
+
+  Future<void> dismissWorkspaceSuggestion(int projectId, int suggestionId);
+
+  Future<WorkspaceInventory> getWorkspaceInventory();
+
   Future<List<AppUser>> getRegisteredUsers();
   Future<List<ProjectMember>> getProjectMembers(int projectId);
   Future<ProjectMember> addProjectMember({

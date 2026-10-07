@@ -6,7 +6,12 @@ import '../../blocs/tasks_bloc.dart';
 import '../../models/models.dart';
 import '../../themes/app_theme.dart';
 import '../forms/task_form.dart';
+import '../../widgets/project_ai_chat_sheet.dart';
+import '../../widgets/project_screen_title.dart';
+import '../../widgets/open_in_cursor_button.dart';
 import '../../widgets/task_detail_sheet.dart';
+import '../../utils/export_taskboard_md.dart';
+import '../../widgets/ide_cursor_session_sheet.dart';
 
 class KanbanBoard extends StatefulWidget {
   final int projectId;
@@ -32,18 +37,108 @@ class _KanbanBoardState extends State<KanbanBoard> {
     context.read<TasksBloc>().add(
       TasksLoadRequested(projectId: widget.projectId),
     );
+    final projectsState = context.read<ProjectsBloc>().state;
+    if (projectsState is! ProjectsLoaded) {
+      context.read<ProjectsBloc>().add(ProjectsLoadRequested());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tablero Kanban'),
+        toolbarHeight: 64,
+        title: ProjectScreenTitle(
+          projectId: widget.projectId,
+          viewLabel: 'Tablero Kanban',
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/projects'),
         ),
         actions: [
+          BlocBuilder<ProjectsBloc, ProjectsState>(
+            builder: (context, state) {
+              if (state is! ProjectsLoaded) {
+                return const SizedBox.shrink();
+              }
+              Project? project;
+              for (final p in state.projects) {
+                if (p.id == widget.projectId) {
+                  project = p;
+                  break;
+                }
+              }
+              if (project == null || project.workspacePath.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return OpenInCursorIconButton(
+                workspacePath: project.workspacePath,
+                projectTitle: project.title,
+              );
+            },
+          ),
+          BlocBuilder<ProjectsBloc, ProjectsState>(
+            builder: (context, state) {
+              if (state is! ProjectsLoaded) {
+                return const SizedBox.shrink();
+              }
+              Project? project;
+              for (final p in state.projects) {
+                if (p.id == widget.projectId) {
+                  project = p;
+                  break;
+                }
+              }
+              if (project == null ||
+                  project.workspacePath.isEmpty ||
+                  !project.canEdit) {
+                return const SizedBox.shrink();
+              }
+              return IconButton(
+                icon: const Icon(Icons.content_paste_go),
+                tooltip: 'Prompt IDE (export + copiar)',
+                onPressed: () => showIdeCursorSessionSheet(
+                  context,
+                  projectsService: context.read<ProjectsBloc>().projectsService,
+                  project: project!,
+                ),
+              );
+            },
+          ),
+          BlocBuilder<ProjectsBloc, ProjectsState>(
+            builder: (context, state) {
+              if (state is! ProjectsLoaded) {
+                return const SizedBox.shrink();
+              }
+              Project? project;
+              for (final p in state.projects) {
+                if (p.id == widget.projectId) {
+                  project = p;
+                  break;
+                }
+              }
+              if (project == null ||
+                  project.workspacePath.isEmpty ||
+                  !project.canEdit) {
+                return const SizedBox.shrink();
+              }
+              return IconButton(
+                icon: const Icon(Icons.description_outlined),
+                tooltip: 'Exportar TASKBOARD.md al repo',
+                onPressed: () => exportTaskboardMdAction(
+                  context,
+                  projectsService: context.read<ProjectsBloc>().projectsService,
+                  project: project!,
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'Asistente IA del proyecto',
+            onPressed: _openProjectAiChat,
+          ),
           IconButton(
             icon: const Icon(Icons.list),
             onPressed: () => context.go('/projects/${widget.projectId}/tasks'),
@@ -665,6 +760,19 @@ class _KanbanBoardState extends State<KanbanBoard> {
       onChecklistPersist: (updated) {
         context.read<TasksBloc>().add(TaskChecklistPersistRequested(updated));
       },
+    );
+  }
+
+  void _openProjectAiChat() {
+    final (title, desc) = _projectContextForAi();
+    final state = context.read<TasksBloc>().state;
+    final tasks = state is TasksLoaded ? state.tasks : const <Task>[];
+    showProjectAiChatSheet(
+      context,
+      projectId: widget.projectId,
+      projectTitle: title.isNotEmpty ? title : 'Proyecto ${widget.projectId}',
+      projectDescription: desc,
+      existingTasks: tasks,
     );
   }
 

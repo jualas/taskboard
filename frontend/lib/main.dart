@@ -1,19 +1,16 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'blocs/blocs.dart';
 import 'services/services.dart';
 import 'services/taskboard_data_source.dart';
-import 'services/supabase/supabase_data_source.dart';
 import 'services/api/api_data_source.dart';
 import 'services/api/taskboard_api_client.dart';
 import 'services/ai_assistant_service.dart';
 import 'router/app_router.dart';
-import 'router/supabase_auth_listenable.dart';
 import 'themes/app_theme.dart';
-import 'models/app_config.dart';
 import 'ui/root_scaffold_messenger.dart';
+import 'utils/workspace_remote_settings.dart';
 
 class _AppBootstrap {
   const _AppBootstrap({
@@ -57,6 +54,8 @@ Future<_AppBootstrap> _initBootstrap(StorageService storageService) async {
   );
 
   final bundled = await storageService.getConfig();
+  final wr = bundled.workspaceRemote;
+  WorkspaceRemoteSettings.apply(host: wr?.sshHost, user: wr?.sshUser);
   final apiCfg = bundled.taskboardApi;
 
   var apiUrl = envApi.trim();
@@ -95,39 +94,6 @@ Future<_AppBootstrap> _initBootstrap(StorageService storageService) async {
       dataSource: ApiDataSource(client),
       authService: apiAuth,
       authRefreshListenable: apiAuth,
-    );
-  }
-
-  const envUrl = String.fromEnvironment('SUPABASE_URL');
-  const envAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-  const envSameOriginProxy = bool.fromEnvironment(
-    'SUPABASE_SAME_ORIGIN_PROXY',
-    defaultValue: false,
-  );
-
-  final sb = bundled.supabase;
-  var url = envUrl.trim();
-  var anonKey = envAnonKey.trim();
-  if (url.isEmpty || anonKey.isEmpty) {
-    if (sb != null && sb.isEnabled) {
-      url = sb.url.trim();
-      anonKey = sb.anonKey.trim();
-    }
-  }
-
-  if (url.isNotEmpty && anonKey.isNotEmpty) {
-    final useProxy = envSameOriginProxy || (sb?.useSameOriginProxy ?? false);
-    if (useProxy && kIsWeb) {
-      final raw = sb?.proxyPrefix ?? '/supabase';
-      final path = raw.startsWith('/') ? raw : '/$raw';
-      url = Uri.parse(Uri.base.origin).resolve(path).toString();
-    }
-    await Supabase.initialize(url: url, anonKey: anonKey);
-    AiAssistantService.configureSupabase();
-    return _AppBootstrap(
-      dataSource: SupabaseDataSource(Supabase.instance.client),
-      authService: SupabaseAuthService(),
-      authRefreshListenable: SupabaseAuthListenable(Supabase.instance.client),
     );
   }
 

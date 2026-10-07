@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -34,17 +35,22 @@ class TaskboardApiClient {
     String path, {
     Object? body,
     Map<String, String>? extraHeaders,
+    Duration? timeout,
   }) async {
     final uri = Uri.parse('$origin$path');
     final h = _headers(jsonBody: true);
     if (extraHeaders != null) {
       h.addAll(extraHeaders);
     }
-    return http.post(
+    final future = http.post(
       uri,
       headers: h,
       body: body == null ? null : jsonEncode(body),
     );
+    if (timeout != null) {
+      return future.timeout(timeout);
+    }
+    return future;
   }
 
   Future<http.Response> put(String path, {required Object body}) async {
@@ -68,5 +74,50 @@ class TaskboardApiClient {
   Future<http.Response> delete(String path) async {
     final uri = Uri.parse('$origin$path');
     return http.delete(uri, headers: _headers());
+  }
+
+  /// POST con respuesta SSE (`text/event-stream`), líneas `data: {...}`.
+  Stream<Map<String, dynamic>> postSseStream(
+    String path, {
+    required Object body,
+  }) async* {
+    final uri = Uri.parse('$origin$path');
+    final request = http.Request('POST', uri);
+    request.headers.addAll(_headers(jsonBody: true));
+    request.headers['Accept'] = 'text/event-stream';
+    request.body = jsonEncode(body);
+
+    final client = http.Client();
+    try {
+      final response = await client.send(request);
+      if (response.statusCode >= 400) {
+        final errBody = await response.stream.bytesToString();
+        throw Exception('Error IA (${response.statusCode}): $errBody');
+      }
+
+      var buffer = '';
+      await for (final chunk in response.stream.transform(utf8.decoder)) {
+        buffer += chunk;
+        while (true) {
+          final sep = buffer.indexOf('\n\n');
+          if (sep < 0) break;
+          final block = buffer.substring(0, sep);
+          buffer = buffer.substring(sep + 2);
+          for (final line in block.split('\n')) {
+            if (!line.startsWith('data:')) continue;
+            final raw = line.substring(5).trim();
+            if (raw.isEmpty) continue;
+            try {
+              final decoded = jsonDecode(raw);
+              if (decoded is Map) {
+                yield Map<String, dynamic>.from(decoded);
+              }
+            } catch (_) {}
+          }
+        }
+      }
+    } finally {
+      client.close();
+    }
   }
 }

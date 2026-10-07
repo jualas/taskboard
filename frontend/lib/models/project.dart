@@ -14,6 +14,10 @@ class Project {
   final String? ownerId;
   @JsonKey(name: 'currentUserRole')
   final ProjectMemberRole? currentUserRole;
+  @JsonKey(name: 'workspacePath', defaultValue: '')
+  final String workspacePath;
+  @JsonKey(name: 'pendingWorkspaceSuggestions', defaultValue: 0)
+  final int pendingWorkspaceSuggestions;
   @JsonKey(name: 'createdAt')
   final DateTime createdAt;
   @JsonKey(name: 'updatedAt')
@@ -26,6 +30,8 @@ class Project {
     required this.status,
     this.ownerId,
     this.currentUserRole,
+    this.workspacePath = '',
+    this.pendingWorkspaceSuggestions = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -40,6 +46,8 @@ class Project {
     ProjectStatus? status,
     String? ownerId,
     ProjectMemberRole? currentUserRole,
+    String? workspacePath,
+    int? pendingWorkspaceSuggestions,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -50,6 +58,9 @@ class Project {
       status: status ?? this.status,
       ownerId: ownerId ?? this.ownerId,
       currentUserRole: currentUserRole ?? this.currentUserRole,
+      workspacePath: workspacePath ?? this.workspacePath,
+      pendingWorkspaceSuggestions:
+          pendingWorkspaceSuggestions ?? this.pendingWorkspaceSuggestions,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -62,6 +73,7 @@ class Project {
     String description = '',
     ProjectStatus status = ProjectStatus.planning,
     String? ownerId,
+    String workspacePath = '',
   }) {
     final now = DateTime.now();
     return Project(
@@ -70,6 +82,7 @@ class Project {
       description: description,
       status: status,
       ownerId: ownerId,
+      workspacePath: workspacePath,
       createdAt: now,
       updatedAt: now,
     );

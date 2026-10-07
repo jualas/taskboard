@@ -1,67 +1,52 @@
 /// Modelo que representa la configuración de la aplicación.
 class AppConfig {
-  final SupabaseConfig? supabase;
   final TaskboardApiConfig? taskboardApi;
+  final WorkspaceRemoteConfig? workspaceRemote;
 
-  const AppConfig({this.supabase, this.taskboardApi});
+  const AppConfig({this.taskboardApi, this.workspaceRemote});
 
   factory AppConfig.fromJson(Map<String, dynamic> json) => AppConfig(
-        supabase: json['supabase'] == null
-            ? null
-            : SupabaseConfig.fromJson(
-                json['supabase'] as Map<String, dynamic>,
-              ),
         taskboardApi: json['taskboardApi'] == null
             ? null
             : TaskboardApiConfig.fromJson(
                 json['taskboardApi'] as Map<String, dynamic>,
               ),
+        workspaceRemote: json['workspaceRemote'] == null
+            ? null
+            : WorkspaceRemoteConfig.fromJson(
+                json['workspaceRemote'] as Map<String, dynamic>,
+              ),
       );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        if (supabase != null) 'supabase': supabase!.toJson(),
         if (taskboardApi != null) 'taskboardApi': taskboardApi!.toJson(),
+        if (workspaceRemote != null) 'workspaceRemote': workspaceRemote!.toJson(),
       };
 }
 
-/// Configuración (client-safe) para conectar con Supabase desde la app.
-class SupabaseConfig {
-  final String url;
-  final String anonKey;
+/// Mini PC para Remote SSH desde el portátil (misma LAN).
+class WorkspaceRemoteConfig {
+  final String sshHost;
+  final String sshUser;
 
-  /// En web, la app puede usar el origen actual más `proxyPrefix` como URL de Supabase
-  /// en lugar de `url`, si `useSameOriginProxy` es true. Evita CORS cuando el edge
-  /// devuelve errores sin cabeceras CORS. Nginx debe hacer proxy de esa ruta hacia `url`.
-  final bool useSameOriginProxy;
-
-  /// Ruta bajo el mismo host que sirve la app (p. ej. `/supabase`). Debe coincidir con `location` en Nginx.
-  final String proxyPrefix;
-
-  const SupabaseConfig({
-    required this.url,
-    required this.anonKey,
-    this.useSameOriginProxy = false,
-    this.proxyPrefix = '/supabase',
+  const WorkspaceRemoteConfig({
+    this.sshHost = '',
+    this.sshUser = '',
   });
 
-  factory SupabaseConfig.fromJson(Map<String, dynamic> json) => SupabaseConfig(
-        url: json['url'] as String,
-        anonKey: json['anonKey'] as String,
-        useSameOriginProxy: json['useSameOriginProxy'] as bool? ?? false,
-        proxyPrefix: json['proxyPrefix'] as String? ?? '/supabase',
+  factory WorkspaceRemoteConfig.fromJson(Map<String, dynamic> json) =>
+      WorkspaceRemoteConfig(
+        sshHost: json['sshHost'] as String? ?? '',
+        sshUser: json['sshUser'] as String? ?? '',
       );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'url': url,
-        'anonKey': anonKey,
-        'useSameOriginProxy': useSameOriginProxy,
-        'proxyPrefix': proxyPrefix,
+        'sshHost': sshHost,
+        'sshUser': sshUser,
       };
-
-  bool get isEnabled => url.trim().isNotEmpty && anonKey.trim().isNotEmpty;
 }
 
-/// Backend TaskBoard (FastAPI + Postgres). Si está habilitado, sustituye a Supabase.
+/// Backend TaskBoard (FastAPI + Postgres).
 class TaskboardApiConfig {
   final String baseUrl;
 

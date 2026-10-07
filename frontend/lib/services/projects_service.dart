@@ -22,12 +22,14 @@ class ProjectsService {
     required String title,
     String description = '',
     ProjectStatus status = ProjectStatus.planning,
+    String workspacePath = '',
   }) async {
     final project = Project.create(
       id: 0,
       title: title,
       description: description,
       status: status,
+      workspacePath: workspacePath,
     );
     return _dataSource.createProject(project);
   }
@@ -40,6 +42,60 @@ class ProjectsService {
   /// Elimina un proyecto y todas sus tareas
   Future<void> deleteProject(int id) async {
     await _dataSource.deleteProject(id);
+  }
+
+  Future<Map<String, dynamic>> previewWorkspaceSnapshot(String path) async {
+    return _dataSource.previewWorkspaceSnapshot(path);
+  }
+
+  Future<Map<String, dynamic>> getProjectWorkspaceSnapshot(int projectId) async {
+    return _dataSource.getProjectWorkspaceSnapshot(projectId);
+  }
+
+  Future<List<WorkspaceSuggestion>> getWorkspaceSuggestions(
+    int projectId, {
+    String state = 'pending',
+  }) async {
+    return _dataSource.getWorkspaceSuggestions(projectId, state: state);
+  }
+
+  Future<Map<String, dynamic>> syncProjectWorkspace(int projectId) async {
+    return _dataSource.syncProjectWorkspace(projectId);
+  }
+
+  Future<Map<String, dynamic>> exportTaskboardMd(
+    int projectId, {
+    bool dryRun = false,
+    String filename = '',
+  }) async {
+    return _dataSource.exportTaskboardMd(
+      projectId,
+      dryRun: dryRun,
+      filename: filename,
+    );
+  }
+
+  Future<IdePrompt> getIdePrompt(int projectId, {int? focusTaskId}) async {
+    return _dataSource.getIdePrompt(projectId, focusTaskId: focusTaskId);
+  }
+
+  Future<IdePrompt> prepareIdeSession(int projectId, {int? focusTaskId}) async {
+    return _dataSource.prepareIdeSession(projectId, focusTaskId: focusTaskId);
+  }
+
+  Future<Map<String, dynamic>> applyWorkspaceSuggestion(
+    int projectId,
+    int suggestionId,
+  ) async {
+    return _dataSource.applyWorkspaceSuggestion(projectId, suggestionId);
+  }
+
+  Future<void> dismissWorkspaceSuggestion(int projectId, int suggestionId) async {
+    await _dataSource.dismissWorkspaceSuggestion(projectId, suggestionId);
+  }
+
+  Future<WorkspaceInventory> getWorkspaceInventory() async {
+    return _dataSource.getWorkspaceInventory();
   }
 
   Future<List<AppUser>> getRegisteredUsers() async {

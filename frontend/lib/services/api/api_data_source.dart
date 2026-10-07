@@ -52,6 +52,9 @@ class ApiDataSource implements TaskboardDataSource {
       'status': m['status'] as String,
       'ownerId': _nullableUuid(m['owner_id']),
       'currentUserRole': m['current_user_role'] as String?,
+      'workspacePath': m['workspace_path'] as String? ?? '',
+      'pendingWorkspaceSuggestions':
+          (m['pending_workspace_suggestions'] as num?)?.toInt() ?? 0,
       'createdAt': m['created_at'] as String,
       'updatedAt': m['updated_at'] as String,
     });
@@ -133,6 +136,7 @@ class ApiDataSource implements TaskboardDataSource {
         'title': project.title,
         'description': project.description,
         'status': project.status.dbValue,
+        'workspace_path': project.workspacePath,
       },
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {
@@ -149,12 +153,150 @@ class ApiDataSource implements TaskboardDataSource {
         'title': project.title,
         'description': project.description,
         'status': project.status.dbValue,
+        'workspace_path': project.workspacePath,
       },
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {
       _httpError('Crear proyecto', res.statusCode, res.body);
     }
     return _projectFromApi(_decodeMap(res.body));
+  }
+
+  Map<String, dynamic> _decodeSnapshot(String body) {
+    final map = _decodeMap(body);
+    return Map<String, dynamic>.from(map);
+  }
+
+  @override
+  Future<Map<String, dynamic>> previewWorkspaceSnapshot(String path) async {
+    final res = await _client.post(
+      '/api/projects/workspace-snapshot-preview',
+      body: {'path': path},
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Vista previa workspace', res.statusCode, res.body);
+    }
+    return _decodeSnapshot(res.body);
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProjectWorkspaceSnapshot(int projectId) async {
+    final res = await _client.get('/api/projects/$projectId/workspace-snapshot');
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Snapshot workspace', res.statusCode, res.body);
+    }
+    return _decodeSnapshot(res.body);
+  }
+
+  @override
+  Future<List<WorkspaceSuggestion>> getWorkspaceSuggestions(
+    int projectId, {
+    String state = 'pending',
+  }) async {
+    final res = await _client.get(
+      '/api/projects/$projectId/workspace-suggestions?state=$state',
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Sugerencias workspace', res.statusCode, res.body);
+    }
+    final list = _decodeList(res.body);
+    return list
+        .whereType<Map>()
+        .map((e) => WorkspaceSuggestion.fromApi(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  @override
+  Future<Map<String, dynamic>> syncProjectWorkspace(int projectId) async {
+    final res = await _client.post('/api/projects/$projectId/workspace-sync');
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Sync workspace', res.statusCode, res.body);
+    }
+    return Map<String, dynamic>.from(_decodeMap(res.body));
+  }
+
+  @override
+  Future<Map<String, dynamic>> exportTaskboardMd(
+    int projectId, {
+    bool dryRun = false,
+    String filename = '',
+  }) async {
+    final body = <String, dynamic>{
+      'dryRun': dryRun,
+      if (filename.trim().isNotEmpty) 'filename': filename.trim(),
+    };
+    final res = await _client.post(
+      '/api/projects/$projectId/taskboard-md',
+      body: body,
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Export TASKBOARD.md', res.statusCode, res.body);
+    }
+    return Map<String, dynamic>.from(_decodeMap(res.body));
+  }
+
+  @override
+  Future<IdePrompt> getIdePrompt(int projectId, {int? focusTaskId}) async {
+    var path = '/api/projects/$projectId/ide-prompt';
+    if (focusTaskId != null) {
+      path += '?focus_task_id=$focusTaskId';
+    }
+    final res = await _client.get(path);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Prompt IDE', res.statusCode, res.body);
+    }
+    return IdePrompt.fromJson(Map<String, dynamic>.from(_decodeMap(res.body)));
+  }
+
+  @override
+  Future<IdePrompt> prepareIdeSession(int projectId, {int? focusTaskId}) async {
+    var path = '/api/projects/$projectId/ide-session';
+    if (focusTaskId != null) {
+      path += '?focus_task_id=$focusTaskId';
+    }
+    final res = await _client.post(path, body: {});
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Sesión IDE', res.statusCode, res.body);
+    }
+    final data = Map<String, dynamic>.from(_decodeMap(res.body));
+    final promptRaw = data['ide_prompt'] ?? data['idePrompt'];
+    if (promptRaw is! Map) {
+      throw Exception('Respuesta ide-session inválida');
+    }
+    return IdePrompt.fromJson(Map<String, dynamic>.from(promptRaw));
+  }
+
+  @override
+  Future<Map<String, dynamic>> applyWorkspaceSuggestion(
+    int projectId,
+    int suggestionId,
+  ) async {
+    final res = await _client.post(
+      '/api/projects/$projectId/workspace-suggestions/$suggestionId/apply',
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Aplicar sugerencia', res.statusCode, res.body);
+    }
+    return Map<String, dynamic>.from(_decodeMap(res.body));
+  }
+
+  @override
+  Future<void> dismissWorkspaceSuggestion(int projectId, int suggestionId) async {
+    final res = await _client.post(
+      '/api/projects/$projectId/workspace-suggestions/$suggestionId/dismiss',
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Descartar sugerencia', res.statusCode, res.body);
+    }
+  }
+
+  @override
+  Future<WorkspaceInventory> getWorkspaceInventory() async {
+    final res = await _client.get('/api/projects/workspace-inventory');
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      _httpError('Inventario workspace', res.statusCode, res.body);
+    }
+    return WorkspaceInventory.fromJson(_decodeMap(res.body));
   }
 
   @override

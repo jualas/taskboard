@@ -16,6 +16,8 @@ Project _$ProjectFromJson(Map<String, dynamic> json) => Project(
     _$ProjectMemberRoleEnumMap,
     json['currentUserRole'],
   ),
+  workspacePath: json['workspacePath'] as String? ?? '',
+  pendingWorkspaceSuggestions: (json['pendingWorkspaceSuggestions'] as num?)?.toInt() ?? 0,
   createdAt: DateTime.parse(json['createdAt'] as String),
   updatedAt: DateTime.parse(json['updatedAt'] as String),
 );
@@ -27,6 +29,8 @@ Map<String, dynamic> _$ProjectToJson(Project instance) => <String, dynamic>{
   'status': _$ProjectStatusEnumMap[instance.status]!,
   'ownerId': instance.ownerId,
   'currentUserRole': _$ProjectMemberRoleEnumMap[instance.currentUserRole],
+  'workspacePath': instance.workspacePath,
+  'pendingWorkspaceSuggestions': instance.pendingWorkspaceSuggestions,
   'createdAt': instance.createdAt.toIso8601String(),
   'updatedAt': instance.updatedAt.toIso8601String(),
 };

@@ -229,6 +229,71 @@ class StorageService implements TaskboardDataSource {
   @override
   Future<bool> canEditProject(int projectId) async => true;
 
+  @override
+  Future<Map<String, dynamic>> previewWorkspaceSnapshot(String path) async {
+    return {
+      'configured': path.trim().isNotEmpty,
+      'summary': 'Workspace solo disponible con la API Taskboard.',
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> getProjectWorkspaceSnapshot(int projectId) async {
+    return previewWorkspaceSnapshot('');
+  }
+
+  @override
+  Future<List<WorkspaceSuggestion>> getWorkspaceSuggestions(
+    int projectId, {
+    String state = 'pending',
+  }) async =>
+      [];
+
+  @override
+  Future<Map<String, dynamic>> syncProjectWorkspace(int projectId) async {
+    return {'skipped': true};
+  }
+
+  @override
+  Future<Map<String, dynamic>> exportTaskboardMd(
+    int projectId, {
+    bool dryRun = false,
+    String filename = '',
+  }) async {
+    return {'skipped': true, 'written': false};
+  }
+
+  @override
+  Future<IdePrompt> getIdePrompt(int projectId, {int? focusTaskId}) async {
+    throw UnsupportedError('Prompt IDE solo disponible con API Taskboard');
+  }
+
+  @override
+  Future<IdePrompt> prepareIdeSession(int projectId, {int? focusTaskId}) async {
+    throw UnsupportedError('Sesión IDE solo disponible con API Taskboard');
+  }
+
+  @override
+  Future<Map<String, dynamic>> applyWorkspaceSuggestion(
+    int projectId,
+    int suggestionId,
+  ) async =>
+      {};
+
+  @override
+  Future<void> dismissWorkspaceSuggestion(int projectId, int suggestionId) async {}
+
+  @override
+  Future<WorkspaceInventory> getWorkspaceInventory() async {
+    return const WorkspaceInventory(
+      entries: [],
+      orphanProjects: [],
+      total: 0,
+      linked: 0,
+      unlinked: 0,
+    );
+  }
+
   /// Obtiene el siguiente ID para tareas
   Future<int> getNextTaskId() async {
     final data = await getData();
