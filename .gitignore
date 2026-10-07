@@ -37,3 +37,6 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# Entornos virtuales (MCP, scripts)
+**/.venv/

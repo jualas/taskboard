@@ -1,0 +1,13 @@
+# Copiar a ~/.cursor/mcp.json (ajustar rutas y credenciales; no commitear secretos).
+
+{
+  "mcpServers": {
+    "taskboard": {
+      "command": "/RUTA_ABSOLUTA/taskboard/mcp-taskboard/run-mcp-taskboard.sh",
+      "env": {
+        "TASKBOARD_ENV_FILE": "/mnt/datos/docker/taskboard-api/.env",
+        "TASKBOARD_API_URL": "http://127.0.0.1:8101"
+      }
+    }
+  }
+}
