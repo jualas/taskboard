@@ -40,35 +40,21 @@ Aplicación Flutter para Web, Android y Escritorio. Este README está orientado 
 
 ## Configuración
 
-### Variables de Entorno
+### Taskboard API
 
-La aplicación puede usar variables de entorno para conectarse a Supabase. Hay dos formas de configurarlas:
+La app usa la **API TaskBoard** (FastAPI + JWT). Configuración habitual:
 
-#### Opción 1: Archivo `.env` (Recomendado para desarrollo local)
+1. **`assets/data/config.json`** (se empaqueta en el build):
+   - `taskboardApi.baseUrl`: URL absoluta del API, o vacío en web si usas proxy en el mismo origen.
+   - `taskboardApi.useSameOriginProxy` + `proxyPrefix` (p. ej. `/api-taskboard`): evita CORS en producción detrás de Caddy/Nginx.
 
-1. Crea un archivo `.env` en el directorio `frontend/` con tus credenciales:
-   ```bash
-   SUPABASE_URL=https://tu-proyecto.supabase.co
-   SUPABASE_ANON_KEY=tu_anon_key_aqui
-   ```
+2. **`--dart-define`** (opcional en desarrollo):
+   - `TASKBOARD_API_URL=https://tu-servidor:8101`
+   - `TASKBOARD_API_SAME_ORIGIN_PROXY=true`
 
-2. El archivo `.env` NO se sube a GitHub (está en `.gitignore`)
+Si no hay API configurada, la app puede arrancar en **modo local** (`StorageService` + credenciales de demostración).
 
-> **Nota**: Actualmente Flutter no lee archivos `.env` directamente. Puedes usar herramientas como `flutter_dotenv` o pasar las variables con `--dart-define` (ver Opción 2).
-
-#### Opción 2: Variables de entorno con `--dart-define`
-
-```bash
-flutter run -d chrome \
-  --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=tu_anon_key
-```
-
-#### Opción 3: Configuración local en código
-
-Si prefieres no usar variables de entorno, puedes editar directamente `lib/config/app_config_local.dart` (ver `app_config_template.dart` como referencia).
-
-> **Importante**: Nunca incluyas claves reales en el repositorio. El archivo `.env` está en `.gitignore` y no se sube a GitHub.
+> **Importante**: no subas secretos al repositorio. `JWT` y sesión se guardan en el dispositivo vía `SharedPreferences`.
 
 ---
 
@@ -186,11 +172,8 @@ Consulta el archivo `LICENSE` en la raíz del repositorio.
 - Trade‑offs: simplicidad de testing en servicios y blocs; serialización con `json_serializable` para tipado estricto.
 
 ## Configuración y entornos
-- Variables esperadas (solo nombres y propósito):
-  - `SUPABASE_URL`: URL del proyecto en Supabase Cloud.
-  - `SUPABASE_ANON_KEY`: clave pública para el cliente.
-  - `APP_ENV`: dev/staging/prod (opcional) para toggles.
-- Inyección: `--dart-define` en local; secretos en CI/CD para builds.
+- `TASKBOARD_API_URL` / `TASKBOARD_API_SAME_ORIGIN_PROXY` o `assets/data/config.json` → `taskboardApi`.
+- `APP_ENV`: dev/staging/prod (opcional) para toggles.
 
 ## Estándares de código
 - Lint y formateo: `flutter analyze` y `flutter format .`.
@@ -213,7 +196,7 @@ Consulta el archivo `LICENSE` en la raíz del repositorio.
 - Logging: usar `debugPrint`/logger configurable por entorno.
 
 ## Seguridad y datos
-- Roles: admin, tutor, student (autorización en backend mediante RLS/policies).
+- Autenticación JWT y permisos de proyecto en el **backend Taskboard** (FastAPI).
 - No registrar PII en logs.
 - Permisos por plataforma (Android/iOS/Web) gestionados en `services/permissions_*` (si aplica).
 
@@ -222,13 +205,13 @@ Consulta el archivo `LICENSE` en la raíz del repositorio.
 - Coordinación de cambios de esquema con backend. El esquema completo consolidado se encuentra en `docs/base_datos/migraciones/schema_completo.sql`.
 
 ## APIs y contratos
-- Servicios en `lib/services/` encapsulan endpoints/Edge Functions.
+- Servicios en `lib/services/` encapsulan el REST del API (`ApiDataSource`, `TaskboardApiClient`).
 - Errores esperados documentados en dartdoc (métodos con `/// Lanza:`).
 - Puntos de extensión: nuevos servicios/funciones deben seguir las mismas convenciones.
 
 ## CI/CD
 - Recomendado: jobs para `analyze`, `test`, `build` por plataforma.
-- Secretos: inyectar `SUPABASE_URL`/`SUPABASE_ANON_KEY` desde el gestor de secretos.
+- La URL del API puede inyectarse con `--dart-define` o embebida solo en `config.json` no sensible (sin JWT).
 
 ## Rendimiento y accesibilidad
 - Evitar rebuilds innecesarios (memorización/selectores en BLoC/Provider).

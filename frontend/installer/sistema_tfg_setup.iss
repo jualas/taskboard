@@ -4,7 +4,7 @@
 #define MyAppName "Sistema TFG"
 #define MyAppVersion "1.0.1"
 #define MyAppPublisher "CIFP"
-#define MyAppURL "https://github.com/elmosca/proyecto_flutter_supabase/wiki"
+#define MyAppURL "https://github.com/elmosca/taskboard"
 #define MyAppExeName "sistema_tfg.exe"
 #define MyAppId "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D"
 

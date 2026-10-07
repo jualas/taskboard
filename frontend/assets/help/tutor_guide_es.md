@@ -333,5 +333,5 @@ Tu rol es fundamental: guías a tus estudiantes en su proceso de aprendizaje. S�
 
 ---
 
-**Última actualización:** Noviembre 2025 | **Versión:** Flutter + Supabase FCT
+**Última actualización:** Noviembre 2025 | **Versión:** Flutter + API Taskboard
 

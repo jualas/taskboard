@@ -1,141 +1,251 @@
 # Asistente IA para tareas (TaskBoard)
 
-Documentación de la funcionalidad que ayuda a **redactar y estructurar tareas** a partir de una descripción en lenguaje natural, alineada con el uso de TaskBoard como **gestor de proyectos** y apoyo a **metodología ágil** (backlog, desglose de trabajo).
+Documentación de la funcionalidad que ayuda a **redactar, planificar y alinear tareas** con el código del proyecto, usando la **API TaskBoard (FastAPI)** como único backend de IA.
 
 ## 1) Qué hace el usuario
 
+### Sugerir una tarea (formulario)
+
 1. En **Nueva tarea** (Kanban o lista), pulsa **Sugerir con IA**.
-2. Escribe un **brief** (qué hay que conseguir, alcance, restricciones).
-3. La app llama al backend; si la respuesta es correcta, se **rellenan** título, descripción, complejidad, horas estimadas, etiquetas y checklist (subtareas) en el formulario.
-4. El usuario **revisa y edita** antes de **Crear** (la IA es asistencia, no decisión final).
+2. Escribe un **brief** (objetivo, alcance, restricciones).
+3. La app llama a `POST /api/ai/suggest`; si la respuesta es correcta, se **rellenan** título, descripción, complejidad, horas estimadas, etiquetas y checklist.
+4. Revisa y edita antes de **Crear**.
+
+### Asistente del proyecto (Kanban / lista)
+
+1. Abre un proyecto → icono **Asistente IA del proyecto** (barra superior).
+2. Modo **Planificar**: conversación para refinar el backlog; puede incluir contexto git/docker si el proyecto tiene **carpeta workspace** vinculada.
+3. Modo **Agent (CLI)**: ejecuta el CLI **`agent`** de Cursor en la carpeta workspace (streaming en la UI). Requiere workspace vinculado y `CURSOR_AGENT_ENABLED=true` en el API.
+4. Aplica los cambios al tablero con el botón correspondiente cuando el borrador te convenga.
+
+La IA **propone**; la decisión final es siempre del usuario.
 
 ## 2) Arquitectura (resumen)
 
-La app solo llama a **Supabase Edge Functions** con la sesión del usuario (`supabase_flutter`). La función elige el backend:
-
-- **DeepSeek (nube)** si en el stack Supabase existe la variable de entorno **`DEEPSEEK_API_KEY`** (recomendado si no quieres cargar la CPU local).
-- **Ollama (local)** si esa clave **no** está definida: el modelo corre en el mini PC.
+La app Flutter **solo** habla con la **API TaskBoard** (JWT). No hay Supabase ni Edge Functions en el flujo actual.
 
 ```mermaid
 sequenceDiagram
-  participant App as FlutterApp
-  participant Kong as SupabaseKong
-  participant Fn as EdgeFunction_ai_assistant
+  participant App as FlutterWeb
+  participant Caddy as Caddy_kanban
+  participant API as taskboard_api
+  participant Agent as CursorAgent_CLI
   participant Cloud as DeepSeek_API
-  participant Oll as OllamaHost
+  participant Oll as Ollama
 
-  App->>Kong: POST /functions/v1/ai-assistant JWT
-  Kong->>Fn: proxy
-  alt DEEPSEEK_API_KEY definida
-    Fn->>Cloud: POST /v1/chat/completions
-    Cloud-->>Fn: JSON
-  else solo local
-    Fn->>Oll: POST /v1/chat/completions
-    Oll-->>Fn: JSON texto
+  App->>Caddy: POST /api-taskboard/api/ai/* JWT
+  Caddy->>API: reverse_proxy
+  alt CURSOR_AGENT_ENABLED y workspace resuelto
+    API->>Agent: agent --print --workspace
+    Agent-->>API: JSON texto
+  else DEEPSEEK_API_KEY definida
+    API->>Cloud: POST /v1/chat/completions
+    Cloud-->>API: JSON
+  else
+    API->>Oll: POST /v1/chat/completions
+    Oll-->>API: JSON texto
   end
-  Fn-->>App: JSON tasks normalizado
+  API-->>App: JSON normalizado
 ```
+
+**Prioridad del motor IA** (en `backend/app/routers/ai.py`, función `_invoke_llm`):
+
+1. **Cursor Agent CLI** — si `CURSOR_AGENT_ENABLED=true` y hay carpeta workspace resuelta (la del proyecto, o `CURSOR_AGENT_DEFAULT_WORKSPACE` en sugerencias sin proyecto).
+2. **DeepSeek (nube)** — si `DEEPSEEK_API_KEY` tiene valor.
+3. **Ollama** — si DeepSeek no está configurado (`OLLAMA_BASE_URL`, `LOCAL_LLM_MODEL`).
+
+El campo `provider` en la respuesta indica cuál se usó: `cursor_agent`, `deepseek` o `local`.
 
 ## 3) Componentes en el código
 
 | Capa | Ubicación | Rol |
 |------|-----------|-----|
-| UI | [`frontend/lib/screens/forms/task_form.dart`](../frontend/lib/screens/forms/task_form.dart) | Botón *Sugerir con IA*, diálogo de brief, aplicación al formulario |
-| Cliente | [`frontend/lib/services/ai_assistant_service.dart`](../frontend/lib/services/ai_assistant_service.dart) | `Supabase.functions.invoke('ai-assistant', body: …)` y parseo de `tasks` |
-| Backend | `volumes/functions/ai-assistant/index.ts` en el stack Supabase (ver ruta en §5) | Elige DeepSeek u Ollama; prompt, `response_format` JSON (DeepSeek), parseo y saneado |
-| Modelo nube | DeepSeek API | `deepseek-chat` por defecto (`DEEPSEEK_MODEL`) |
-| Modelo local | Ollama en el host | `qwen2.5:3b-instruct-q4_K_M` si no hay clave DeepSeek |
+| UI tarea | [`frontend/lib/screens/forms/task_form.dart`](../frontend/lib/screens/forms/task_form.dart) | Botón *Sugerir con IA*, diálogo de brief |
+| UI proyecto | [`frontend/lib/widgets/project_ai_chat_panel.dart`](../frontend/lib/widgets/project_ai_chat_panel.dart) | Chat *Planificar* / *Agent (CLI)* |
+| Cliente | [`frontend/lib/services/ai_assistant_service.dart`](../frontend/lib/services/ai_assistant_service.dart) | `POST /api/ai/suggest`, `/api/ai/chat`, SSE `/api/ai/agent-stream` |
+| Backend | [`backend/app/routers/ai.py`](../backend/app/routers/ai.py) | Prompts, elección de proveedor, parseo JSON |
+| Cursor CLI | [`backend/app/cursor_agent.py`](../backend/app/cursor_agent.py) | Invocación headless de `agent --print` |
+| Sesiones agent | [`backend/app/agent_sessions.py`](../backend/app/agent_sessions.py) | Reanudar sesión por proyecto, historial de runs |
+| Workspace | [`backend/app/workspace.py`](../backend/app/workspace.py) | Snapshot git/docker para contexto en chat |
 
-Contrato de entrada (cuerpo JSON hacia la función):
+### Endpoints IA
 
-- **Operación (Cloudflare)**: **no** uses **`x-taskboard-intent`** ni **`x-tb-op`**: en este dominio Cloudflare **bloquea esas cabeceras en POST** → **502** sin CORS. La app Flutter envía **`x-operation-id: tb_suggest_v1`**. Otros valores: **`tb_brief_v1`**, **`tb_misc_v1`**, **`tb_batch_v1`**, **`tb_plan_v1`**. **No** envíes la clave JSON **`intent`**.
-- Operaciones internas tras normalizar: **`agile`**, **`brief`**, **`suggest`**, **`tasks`**, **`task_plan`**.
-- `userMessage`: texto del usuario.
-- `projectContext`: opcional (`title`, `description`, etc.).
+| Método | Ruta | Uso |
+|--------|------|-----|
+| `POST` | `/api/ai/suggest` | Una tarea (`userMessage`) o plan inicial (`projectPlan: true`) |
+| `POST` | `/api/ai/chat` | Conversación de backlog; opcional `projectId` para contexto workspace |
+| `POST` | `/api/ai/agent-stream` | SSE del CLI Cursor Agent (solo con workspace vinculado) |
+| `GET` | `/api/projects/{id}/agent-session` | Sesión agent persistida |
+| `DELETE` | `/api/projects/{id}/agent-session` | Reiniciar sesión |
+| `GET` | `/api/projects/{id}/agent-runs` | Historial de prompts agent |
 
-Contrato de salida (éxito):
+Todas las rutas requieren **`Authorization: Bearer <JWT>`** (misma sesión que el login web).
 
-- `{ "tasks": [ { "title", "description", "complexity", "estimatedHours", "tags", "subtasks" } ] }`
+### Contrato de entrada (suggest)
 
-La app usa **la primera tarea** de la lista para rellenar el formulario.
+```json
+{
+  "userMessage": "texto del usuario",
+  "projectPlan": false,
+  "projectContext": { "title": "...", "description": "..." }
+}
+```
+
+Cabecera opcional: `x-operation-id: tb_suggest_v1` (informativa; el API no la interpreta).
+
+### Contrato de salida (suggest, éxito)
+
+```json
+{
+  "tasks": [
+    {
+      "title": "...",
+      "description": "...",
+      "complexity": "simple|medium|complex",
+      "estimatedHours": null,
+      "tags": [],
+      "subtasks": []
+    }
+  ],
+  "provider": "cursor_agent|deepseek|local"
+}
+```
+
+En el formulario de tarea se usa **la primera entrada** de `tasks`.
+
+### Contrato de salida (chat)
+
+```json
+{
+  "message": "texto en español",
+  "tasks": null,
+  "provider": "..."
+}
+```
+
+Si `tasks` es una lista, sustituye el borrador del panel de chat.
 
 ## 4) Privacidad y seguridad
 
-- **Claves de APIs** (`DEEPSEEK_API_KEY`) solo en el **entorno del contenedor** Edge Functions / `.env` del stack Supabase; **nunca** en el build Flutter ni en el repo.
-- Con **DeepSeek**, el texto del brief sale del servidor hacia **api.deepseek.com**; revisa la política de privacidad del proveedor si el contenido es sensible.
-- Con **Ollama**, el brief no sale del entorno local (Edge Function → host Docker).
-- Sigue aplicando **JWT / anon key** en la invocación de funciones (`VERIFY_JWT` según tu stack).
+- Claves (`DEEPSEEK_API_KEY`, `CURSOR_API_KEY`, `JWT_SECRET`) **solo** en el `.env` del contenedor `taskboard-api` (`/mnt/datos/docker/taskboard-api/.env`); nunca en el build Flutter ni en el repo.
+- Con **DeepSeek**, el texto sale hacia **api.deepseek.com**; revisa su política si el contenido es sensible.
+- Con **Ollama**, el texto no sale del entorno acordado (mini PC local o servidor Ollama remoto en LAN).
+- Con **Cursor Agent**, el CLI accede al **filesystem del workspace** montado en el contenedor API; limita `WORKSPACE_ROOTS` y permisos de montaje.
 
 ## 5) Infraestructura y operación
 
-### DeepSeek (recomendado para no saturar la CPU)
+### Despliegue en producción
 
-1. Obtén una API key en [DeepSeek Platform](https://platform.deepseek.com/).
-2. En el **`.env` del stack Supabase** (el que acompaña a `docker-compose.yml` de Supabase, **no** el `.env` del frontend Flutter), añade las variables. Plantilla: [`docs/EJEMPLO_ENV_SUPABASE_IA.env`](EJEMPLO_ENV_SUPABASE_IA.env).
-   - Ruta típica en este entorno: `/mnt/datos/docker/supabase/.env`
-3. **Recrear el servicio** para que el contenedor reciba la variable (un simple `restart` no basta si acabas de añadir la clave al `.env`):
-   ```bash
-   docker compose --project-directory /mnt/datos/docker/supabase \
-     -f /mnt/datos/docker/supabase/docker-compose.yml up -d functions
+| Componente | Ruta / URL |
+|------------|------------|
+| API + Postgres | `/mnt/datos/docker/taskboard-api/` |
+| Web (Caddy) | `/mnt/datos/docker/taskboard-web/` → `https://kanban.jualas.es` |
+| Proxy mismo origen | Caddy: `/api-taskboard/*` → `taskboard-api:8000` |
+| Config Flutter | `frontend/assets/data/config.json` → `taskboardApi.useSameOriginProxy: true`, `proxyPrefix: "/api-taskboard"` |
+
+Plantilla de variables IA: [`backend/.env.example`](../backend/.env.example).
+
+Tras editar `.env`:
+
+```bash
+cd /mnt/datos/docker/taskboard-api
+docker compose up -d
+```
+
+Caddy tiene **read_timeout / write_timeout de 1200 s** para peticiones IA largas (plan de proyecto, Cursor Agent).
+
+### DeepSeek (recomendado si no quieres cargar CPU local)
+
+1. Obtén API key en [DeepSeek Platform](https://platform.deepseek.com/).
+2. En `/mnt/datos/docker/taskboard-api/.env`:
+
+   ```env
+   DEEPSEEK_API_KEY=sk-...
+   DEEPSEEK_MODEL=deepseek-chat
    ```
-4. **Comprobar** que la clave llegó al contenedor (no mostrará el valor):
+
+3. Reinicia el contenedor API.
+4. Comprueba que la clave llegó (sin mostrar valor):
+
    ```bash
-   docker exec supabase-edge-functions sh -c 'test -n "$DEEPSEEK_API_KEY" && echo CLAVE_PRESENTE || echo CLAVE_FALTA'
+   docker exec taskboard-api sh -c 'test -n "$DEEPSEEK_API_KEY" && echo CLAVE_PRESENTE || echo CLAVE_FALTA'
    ```
-   Si sale `CLAVE_FALTA`, la función seguirá usando **Ollama local**.
 
-Si la app usa **`api-supabase.jualas.es`**, el `.env` a editar es el del **servidor donde corre ese stack**, no solo la máquina de desarrollo.
+Si `DEEPSEEK_API_KEY` tiene valor, el backend **no** usa Ollama salvo fallback explícito tras fallo de Cursor Agent (`CURSOR_AGENT_FALLBACK_LLM=true`).
 
-Si `DEEPSEEK_API_KEY` está definida y no vacía en el contenedor, **no** se usa Ollama para esta función.
+### Ollama (local o remoto)
 
-Tras generar una sugerencia, el mensaje de la app indica **DeepSeek (nube)** u **Ollama (local)** según el campo `provider` de la respuesta.
+- **Local en mini PC:** `OLLAMA_BASE_URL=http://host.docker.internal:11434` (con `extra_hosts: host-gateway` en compose).
+- **Remoto en LAN:** ver [`INFORME_OLLAMA_REMOTO_TASKBOARD.md`](INFORME_OLLAMA_REMOTO_TASKBOARD.md).
 
-### Ollama local
+Variables clave:
 
-La puesta en marcha de Ollama, `systemd --user`, `host.docker.internal` y `LOCAL_LLM_MODEL` está en [`MANUAL_DESARROLLADOR_SUPABASE.md`](../MANUAL_DESARROLLADOR_SUPABASE.md) (sección **13**).
+```env
+DEEPSEEK_API_KEY=
+OLLAMA_BASE_URL=http://<IP_OLLAMA>:11434
+LOCAL_LLM_MODEL=qwen2.5:3b-instruct-q4_K_M
+OLLAMA_TIMEOUT_SEC=180
+OLLAMA_TIMEOUT_PLAN_SEC=600
+```
 
-Rutas habituales:
+### Cursor Agent CLI (mini PC, recomendado en producción)
 
-- Función: `/mnt/datos/docker/supabase/volumes/functions/ai-assistant/`
-- Compose: `/mnt/datos/docker/supabase/docker-compose.yml` (servicio `functions`: `DEEPSEEK_*`, `LOCAL_LLM_MODEL`)
+Requiere el comando **`agent`** instalado y autenticado en el host (o `CURSOR_API_KEY` en `.env`).
+
+```env
+CURSOR_AGENT_ENABLED=true
+CURSOR_AGENT_BIN=agent
+CURSOR_AGENT_HOME=/home/jualas
+CURSOR_AGENT_DEFAULT_WORKSPACE=/mnt/datos/.../taskboard
+CURSOR_AGENT_MODE=ask
+CURSOR_AGENT_TIMEOUT_SEC=180
+CURSOR_AGENT_TIMEOUT_PLAN_SEC=600
+CURSOR_AGENT_FALLBACK_LLM=false
+```
+
+El contenedor `taskboard-api` debe montar el binario `agent`, el home de Cursor y las raíces de workspace (`WORKSPACE_ROOTS`) en **lectura/escritura** donde aplique.
+
+Documentación operativa del puente manual: [`docs/MCP_TASKBOARD.md`](MCP_TASKBOARD.md) § Script puente.
 
 ## 6) Limitaciones conocidas
 
-- **Latencia en CPU**: la primera respuesta puede tardar **varios decenas de segundos** según carga del equipo y si el modelo está caliente.
-- **Calidad**: depende del modelo y del brief; conviene revisar siempre título, estimación y subtareas antes de guardar.
-- **Sin DeepSeek y sin Ollama**: la función fallará hasta que exista al menos un backend operativo.
+- **Latencia:** primera respuesta con Ollama en CPU puede tardar **varios decenas de segundos**; Cursor Agent en repos grandes puede superar **varios minutos** (Caddy y cliente Flutter tienen timeouts amplios).
+- **Calidad:** depende del modelo, brief y contexto workspace; revisar siempre antes de guardar.
+- **Sin proveedor operativo:** si Cursor Agent falla y no hay fallback, y tampoco DeepSeek ni Ollama, la petición devuelve **502**.
+- **Agent (CLI) sin workspace:** `POST /api/ai/agent-stream` responde **400** si el proyecto no tiene carpeta workspace vinculada.
 
-### 6.1) `ClientException: Failed to fetch` (login, proyectos, IA, todo el API)
+### 6.1) `Failed to fetch` / errores de red
 
-Si **todo** el dominio `api-supabase.*` deja de responder, revisa que **Kong** haya arrancado: un error en `volumes/api/kong.yml` impide cargar la API entera (`docker logs supabase-kong`). En CORS, el origen comodín debe escribirse **`'*'`** (comillas simples en YAML); `-"*"` con comillas dobles puede romper el parseo y dejar Kong en bucle de error.
+Causas habituales:
 
-En `kong.yml`, **auth**, **rest**, **graphql**, **realtime**, **storage**, **functions-v1**, **mcp** y **dashboard** comparten el mismo bloque CORS anclado (`&cors_browser` / `*cors_browser`): orígenes explícitos (`https://kanban.jualas.es`, localhost) más `'*'`, y cabeceras permitidas (`Authorization`, `apikey`, …). Sin eso, el **preflight** (`OPTIONS`) puede responder sin `Access-Control-Allow-Origin` y el navegador bloquea login e IA. Tras editar: **`docker restart supabase-kong`** (o el nombre del contenedor Kong en tu compose).
+1. **API no accesible** — comprobar contenedores `taskboard-api` y `taskboard-web`.
+2. **CORS** — en web de producción debe usarse **mismo origen** (`useSameOriginProxy: true`); no hace falta CORS cross-origin si kanban y API van por `https://kanban.jualas.es/api-taskboard/`.
+3. **Timeout del proxy** — peticiones IA muy largas; Caddy ya usa 1200 s; si hay otro proxy delante (Cloudflare), revisar límites allí.
+4. **Modo local sin API** — si `config.json` no define `taskboardApi`, la app usa almacenamiento local y la IA queda **deshabilitada**.
 
-Si **OPTIONS** devuelve CORS bien en el host local pero falla en `api-supabase.jualas.es`, revisa el **túnel/proxy** delante (p. ej. Cloudflare): reglas que quiten cabeceras o bloqueen OPTIONS.
+### 6.2) Error 502 del proveedor IA
 
-**Misma origen (recomendado si el error persiste):** en `config.json`, `useSameOriginProxy: true` y en Nginx del host que sirve el kanban un `location /supabase/` con `proxy_pass` al API real (ver `frontend/docker/nginx/nginx.conf`). La app en web usará `https://kanban…/supabase` como base de Supabase: **no hay petición cross-origin** y los 502 del edge dejan de mostrarse como fallo CORS.
+| Síntoma | Causa probable |
+|---------|----------------|
+| `Cursor Agent CLI: ...` | CLI no instalado, sin auth, workspace no montado |
+| `DeepSeek (402)` | Saldo insuficiente en cuenta DeepSeek |
+| `No se pudo conectar con Ollama` | Ollama parado, IP incorrecta o firewall |
+| JSON vacío / parse error | Modelo devolvió texto no JSON; reintentar o cambiar proveedor |
 
-No uses un `httpClient` global tipo `FetchClient` en `Supabase.initialize` salvo que hayas validado auth y REST: puede interferir con el login en web.
+Logs:
 
-### 6.15) Cloudflare WAF: 502 y “parece CORS” solo en Sugerir IA
+```bash
+docker logs taskboard-api 2>&1 | tail -80
+```
 
-En algunos despliegues, un **POST** cuyo cuerpo JSON incluye la clave **`intent`** (p. ej. `{"intent":"agile",...}`) no llega a Kong: Cloudflare responde **502** (`error code: 502`) **sin** `via: kong` ni cabeceras CORS → en la app aparece *Failed to fetch* / mensaje de CORS.
+### 6.3) El formulario no se rellena
 
-**Solución en código (actual):** el cliente Flutter envía **`x-operation-id: tb_suggest_v1`**. En `kong.yml`, CORS debe incluir **`x-operation-id`**. En **web**, `supabase-dart` añade también **`x-supabase-client-platform`** y **`x-supabase-client-platform-version`**; si no están en la lista de cabeceras permitidas del plugin CORS, el **preflight falla** y Chrome muestra *No 'Access-Control-Allow-Origin' header* aunque el `OPTIONS` devuelva 200. Tras editar Kong, **`docker restart supabase-kong`**. **`x-taskboard-intent`** y **`x-tb-op`** pueden estar bloqueadas por Cloudflare en POST aunque Kong las permita.
-
-Si el **502** lleva **`via: kong`** y cuerpo JSON del propio `ai-assistant`, suele ser **fallo del modelo** (DeepSeek/Ollama), no el WAF.
-
-### 6.2) El equipo trabaja pero el formulario no se rellena
-
-Causas corregidas en código:
-
-1. **`max_tokens` demasiado bajo** en la Edge Function (antes 160): el modelo **cortaba el JSON** a mitad; el parse fallaba y se devolvía `tasks: []`. La app no tenía nada que aplicar. Solución: **`max_tokens` ~1024** en `ai-assistant/index.ts` y reinicio del contenedor `supabase-edge-functions`.
-2. **Parseo en Flutter**: si `tasks` llegaba como lista de mapas genéricos, `whereType<Map<String,dynamic>>()` **descartaba todos** los ítems. Solución: normalizar con `Map<String, dynamic>.from(...)`.
-3. **Markdown** alrededor del JSON (bloques tipo \`\`\`json): la función ahora **retira fences** antes de parsear.
+- Respuesta con `tasks: []` — el modelo no generó entradas válidas; acorta el brief o cambia proveedor.
+- Parseo en Flutter normaliza mapas con `Map<String, dynamic>.from(...)` (no descarta entradas por tipo genérico).
 
 ## 7) Prueba rápida (operador)
 
-Desde el host donde corre Ollama (ajustar modelo si cambió):
+### Ollama directo (host donde corre Ollama)
 
 ```bash
 curl -sS http://127.0.0.1:11434/v1/chat/completions \
@@ -143,22 +253,38 @@ curl -sS http://127.0.0.1:11434/v1/chat/completions \
   -d '{"model":"qwen2.5:3b-instruct-q4_K_M","messages":[{"role":"user","content":"Responde solo con OK"}],"temperature":0}'
 ```
 
-Prueba vía API pública Supabase (sustituir URL y anon key):
+### API TaskBoard (sustituir URL y credenciales)
 
 ```bash
-curl -sS "$SUPABASE_URL/functions/v1/ai-assistant" \
-  -H "apikey: $SUPABASE_ANON_KEY" \
-  -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+TOKEN=$(curl -sS -X POST "https://kanban.jualas.es/api-taskboard/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"TU_EMAIL","password":"TU_CLAVE"}' | jq -r .access_token)
+
+curl -sS "https://kanban.jualas.es/api-taskboard/api/ai/suggest" \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "x-operation-id: tb_suggest_v1" \
   -d '{"userMessage":"Planificar tarea de login","projectContext":{"title":"Demo"}}'
 ```
 
-## 8) Evolución futura (ideas)
+En LAN directa al puerto del API: `http://<IP_MINIPC>:8101/api/ai/suggest`.
 
-- Pasar al formulario el **título y descripción reales del proyecto** (hoy el brief usa contexto mínimo en algunos flujos).
-- Modo `brainstorm` para ideas de proyecto sin crear tarea aún.
-- Cola o job asíncrono si se prioriza UX frente a latencia.
+## 8) Workspace vinculado al proyecto
+
+Cuando un proyecto tiene **carpeta workspace** (Editar proyecto → *Carpeta workspace*):
+
+1. El API valida la ruta contra **`WORKSPACE_ROOTS`** y puede generar un **snapshot** (git: rama, commit, cambios; docker compose ps si hay compose).
+2. El **chat IA** (`POST /api/ai/chat` con **`projectId`**) incluye ese contexto en el system prompt.
+3. El **modo Agent** ejecuta el CLI en esa carpeta.
+4. Endpoints útiles: `POST /api/projects/workspace-snapshot-preview`, `GET /api/projects/{id}/workspace-snapshot`.
+
+Requisitos: montajes `:rw` en `taskboard-api`, migraciones **`002_workspace_path.sql`**, **`003_workspace_snapshots.sql`**, **`004_agent_sessions.sql`**. Ver `INSTRUCCIONES_AGENTE.md` § Workspace.
+
+## 9) Integración con Cursor IDE (fuera del chat web)
+
+- **MCP TaskBoard:** [`docs/MCP_TASKBOARD.md`](MCP_TASKBOARD.md) — CRUD y workspace desde Cursor.
+- **Export TASKBOARD.md:** botón en Kanban, MCP `export_taskboard_md`, script `scripts/export_taskboard_md.py`.
+- **Prompt IDE:** menú *Prompt IDE (Cursor)* / `POST /api/projects/{id}/ide-session`.
 
 ---
 

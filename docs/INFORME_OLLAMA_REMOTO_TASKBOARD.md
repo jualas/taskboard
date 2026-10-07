@@ -149,8 +149,18 @@ Si aquí falla pero `curl` desde el minipc funciona, revisar reglas de firewall 
 
 ## 6) Comportamiento del backend (para evitar confusiones)
 
-- Si **`DEEPSEEK_API_KEY`** tiene valor, el backend **usa DeepSeek** y **no** llama a Ollama.
-- Si **`DEEPSEEK_API_KEY`** está vacío, usa **`OLLAMA_BASE_URL`** (local o remoto; es indistinto para el código).
+**Cadena de prioridad** (cuando la petición llega al API):
+
+1. **Cursor Agent CLI** — si `CURSOR_AGENT_ENABLED=true` y hay workspace resuelto (carpeta del proyecto o `CURSOR_AGENT_DEFAULT_WORKSPACE`). En producción del mini PC suele ser el motor principal.
+2. **DeepSeek** — si `DEEPSEEK_API_KEY` tiene valor (y Cursor Agent no aplica o falló con `CURSOR_AGENT_FALLBACK_LLM=true`).
+3. **Ollama** — si `DEEPSEEK_API_KEY` está vacío (o fallback tras fallo de Cursor Agent con fallback activado).
+
+Para **forzar Ollama remoto** (sin DeepSeek ni depender de Cursor Agent para esa petición):
+
+- Dejar **`DEEPSEEK_API_KEY` vacío**.
+- Poner **`CURSOR_AGENT_ENABLED=false`** (o aceptar que Cursor Agent tenga prioridad si sigue activo y hay workspace).
+
+Si solo quieres Ollama como respaldo cuando Cursor Agent falle: `CURSOR_AGENT_FALLBACK_LLM=true`.
 
 ---
 
@@ -170,6 +180,7 @@ Si aquí falla pero `curl` desde el minipc funciona, revisar reglas de firewall 
 | Timeout | Firewall intermedio, IP equivocada, red distinta (VLAN invitados, etc.) |
 | HTTP 4xx/5xx desde Ollama | Modelo no instalado o nombre distinto a `LOCAL_LLM_MODEL` |
 | TaskBoard sigue usando nube | `DEEPSEEK_API_KEY` no está vacío en `.env` del contenedor |
+| TaskBoard usa Cursor Agent en lugar de Ollama | `CURSOR_AGENT_ENABLED=true` y hay workspace; desactivar o vaciar workspace si quieres probar solo Ollama |
 
 Logs del API (minipc):
 
@@ -181,10 +192,10 @@ docker logs taskboard-api 2>&1 | tail -80
 
 ## 9) Referencias en el repositorio TaskBoard
 
-- Backend (ruta IA): `backend/app/routers/ai.py`
+- Backend (ruta IA): `backend/app/routers/ai.py`, `backend/app/cursor_agent.py`
 - Variables de entorno (plantilla): `backend/.env.example`
 - Despliegue Docker operativo (minipc): `/mnt/datos/docker/taskboard-api/` (`docker-compose.yml`, `.env`)
-- Funcionalidad de usuario (contexto): `docs/IA_ASISTENTE.md` (parte del flujo sigue describiendo Supabase; el despliegue actual con API propia usa FastAPI + `OLLAMA_BASE_URL` / `DEEPSEEK_API_KEY` como arriba)
+- Arquitectura IA completa: `docs/IA_ASISTENTE.md`
 
 ---
 

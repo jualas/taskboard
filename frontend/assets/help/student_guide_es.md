@@ -401,6 +401,6 @@ Para problemas técnicos del sistema:
 ---
 
 **Última actualización:** Noviembre 2025  
-**Versión de la aplicación:** Flutter + Supabase FCT  
+**Versión de la aplicación:** Flutter + API Taskboard  
 **Soporte:** Contacta a tu tutor o administrador del sistema
 

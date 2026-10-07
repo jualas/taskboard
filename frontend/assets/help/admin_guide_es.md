@@ -172,7 +172,7 @@ El corazón de tus funciones administrativas.
 - El sistema está configurado para aceptar únicamente emails del dominio institucional
 - Los usuarios no pueden registrarse con emails de otros dominios
 - Esta limitación se aplica tanto en el registro manual como en la importación masiva
-- Si necesitas añadir un nuevo dominio permitido, debes configurarlo en Supabase
+- Si necesitas añadir un nuevo dominio permitido, debe implementarse en el backend Taskboard (validación en registro / política de despliegue)
 
 **Mejores prácticas:**
 - ✅ Verifica que el email sea institucional
@@ -287,15 +287,13 @@ Personalización y configuración global.
 
 #### **Gestión de Servicios Externos**
 
-**Supabase:**
-- Configuración de la base de datos
-- Gestión de autenticación y usuarios
-- Configuración de políticas de seguridad (RLS)
-- Monitoreo del estado del servicio
-- Configuración de dominios permitidos para registro
-- Gestión de API keys y credenciales
+**API Taskboard (backend):**
+- PostgreSQL y contenedor/servicio del API (FastAPI)
+- Autenticación JWT y usuarios en `app_users`
+- Variables de entorno y secretos (`JWT_SECRET`, `DATABASE_URL`, etc.)
+- Salud del servicio (`/health`, logs de Docker)
 
-**ResendMail:**
+**ResendMail (si aplica):**
 - Configuración de credenciales API
 - Gestión de templates de email
 - Monitoreo del estado del servicio de envío
@@ -305,12 +303,12 @@ Personalización y configuración global.
 
 **⚠️ Importante:**
 - El administrador es responsable de mantener ambos servicios operativos
-- Cualquier problema con Supabase o ResendMail afectará el funcionamiento del sistema
+- Cualquier problema con el API Taskboard o ResendMail afectará el funcionamiento del sistema
 - Configura alertas para monitorear el estado de estos servicios
 
 #### **Configuración de Notificaciones**
 - **Sistema de notificaciones:**
-  - **Supabase**: Configuración de la base de datos y autenticación
+  - **API Taskboard**: Base de datos y autenticación (JWT)
   - **ResendMail**: Gestión del servicio de envío de emails
   - Configuración de credenciales API de ResendMail
   - Templates de emails personalizados
@@ -322,7 +320,7 @@ Personalización y configuración global.
   - Prioridades
   - Sonido y badges
 
-**Importante:** El administrador es responsable de mantener operativos tanto Supabase como ResendMail para que el sistema de notificaciones funcione correctamente.
+**Importante:** El administrador es responsable de mantener operativos el backend Taskboard y, si se usa correo transaccional, ResendMail.
 
 #### **Políticas de Seguridad**
 - Complejidad de contraseñas
@@ -330,10 +328,10 @@ Personalización y configuración global.
 - Intentos de login permitidos
 - Autenticación de dos factores (2FA)
 - Políticas de backup
-- **Limitación de dominio para registro**: Configurado en Supabase para aceptar únicamente emails del dominio institucional
+- **Limitación de dominio para registro**: Debe aplicarse en el backend (validación de email al registrar) o en la política de despliegue
   - Esta configuración previene registros no autorizados
   - Solo usuarios con emails del dominio permitido pueden ser creados
-  - La configuración se realiza en Supabase Dashboard → Authentication → Settings
+  - Ajustes concretos: ver `backend/README.md` y variables de entorno del API
 
 #### **Flujos de Trabajo**
 - Estados personalizados de tareas
@@ -551,7 +549,7 @@ Como admin, recibes notificaciones críticas del sistema.
 1. Verificar métricas de servidor (CPU, RAM, disco)
 2. Revisar logs de errores
 3. Verificar conexión a base de datos
-4. Comprobar servicios externos (Supabase, email)
+4. Comprobar servicios externos (API Taskboard, correo)
 
 **Soluciones:**
 - Si es carga alta: escalar recursos
@@ -758,7 +756,7 @@ Recomendaciones:
 - [Registro de Usuarios por Roles](../arquitectura/registro_usuarios_por_roles.md)
 
 ### **Herramientas Útiles**
-- **Supabase Dashboard**: Gestión directa de base de datos
+- **PostgreSQL / panel de BD**: Gestión directa de la base de datos del API
 - **Logs del Sistema**: Diagnóstico de problemas
 - **Google Analytics**: (Si está configurado) Métricas de uso
 
@@ -774,7 +772,7 @@ df -h
 top
 
 # Backup manual de BD
-# (comando específico según tu configuración de Supabase)
+# (comando específico según tu despliegue de PostgreSQL, p. ej. pg_dump)
 ```
 
 ---
@@ -798,6 +796,6 @@ Un sistema bien administrado es invisible. Si usuarios no piensan en problemas t
 ---
 
 **Última actualización:** Noviembre 2025  
-**Versión de la aplicación:** Flutter + Supabase FCT  
+**Versión de la aplicación:** Flutter + API Taskboard  
 **Soporte Técnico:** [Contacto de soporte de nivel superior si aplica]
 
