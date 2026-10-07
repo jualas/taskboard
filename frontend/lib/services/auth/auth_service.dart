@@ -1,4 +1,4 @@
-/// Contrato de autenticación (Supabase, API REST o modo local).
+/// Contrato de autenticación (API REST JWT o modo local de demostración).
 abstract class AuthService {
   bool get isAuthenticated;
 

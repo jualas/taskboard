@@ -5,7 +5,7 @@ import 'auth_service.dart';
 const _kLocalAuth = 'taskboard_local_demo_auth';
 const _kLocalEmail = 'taskboard_local_demo_email';
 
-/// Sesión local de demostración cuando no hay Supabase ni API (datos en JSON).
+/// Sesión local de demostración cuando no hay API configurada (datos en JSON).
 class LocalAuthService implements AuthService {
   LocalAuthService(this._prefs);
 

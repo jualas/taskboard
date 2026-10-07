@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Establece contraseña bcrypt para un usuario en app_users (tras migración desde Supabase)."""
+"""Establece contraseña bcrypt para un usuario en app_users."""
 import asyncio
 import os
 import sys

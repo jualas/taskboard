@@ -1,4 +1,4 @@
--- Instalación limpia: Postgres + TaskBoard API (sin Supabase).
+-- Instalación limpia: Postgres + TaskBoard API.
 -- Ejecutar: psql $DATABASE_URL -f 001_fresh_install.sql
 
 begin;

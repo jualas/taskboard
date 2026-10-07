@@ -26,7 +26,6 @@
     "Anteproyectos"
   ],
   "ignoreWords": [
-    "supabase",
     "flutter",
     "dart"
   ],

@@ -1,102 +1,105 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
 
-import 'package:frontend/blocs/auth_bloc.dart';
-import 'package:frontend/services/auth_service.dart';
-import 'package:frontend/models/user.dart';
+import 'package:personal_taskboard/blocs/auth_bloc.dart';
+import 'package:personal_taskboard/services/auth_service.dart';
 
-// Generar mocks
-@GenerateMocks([AuthService])
-import 'auth_bloc_test.mocks.dart';
+class _FakeAuth implements AuthService {
+  _FakeAuth({
+    this.authenticated = false,
+    this.email,
+    this.logoutThrows = false,
+  });
+
+  bool authenticated;
+  String? email;
+  bool logoutThrows;
+
+  @override
+  bool get isAuthenticated => authenticated;
+
+  @override
+  String? get currentUserEmail => email;
+
+  @override
+  String? get currentUserId => null;
+
+  @override
+  String? get currentUserName => null;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<bool> login(String e, String p) async {
+    authenticated = true;
+    email = e;
+    return true;
+  }
+
+  @override
+  Future<void> logout() async {
+    if (logoutThrows) throw Exception('Logout failed');
+    authenticated = false;
+    email = null;
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {}
+
+  @override
+  Future<bool> validateCredentials(String e, String p) => login(e, p);
+}
 
 void main() {
   group('AuthBloc', () {
-    late MockAuthService mockAuthService;
-    late AuthBloc authBloc;
+    test('initial state is AuthInitial', () {
+      final bloc = AuthBloc(authService: _FakeAuth());
+      expect(bloc.state, isA<AuthInitial>());
+      bloc.close();
+    });
 
-    final tUser = User(
-      id: 1,
-      email: 'test@test.com',
-      fullName: 'Test User',
-      role: UserRole.student,
-      status: UserStatus.active,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
+    blocTest<AuthBloc, AuthState>(
+      'AuthCheckRequested: authenticated',
+      build: () => AuthBloc(
+        authService: _FakeAuth(authenticated: true, email: 'u@test.com'),
+      ),
+      act: (bloc) => bloc.add(AuthCheckRequested()),
+      expect: () => [
+        isA<AuthLoading>(),
+        const AuthAuthenticated(email: 'u@test.com'),
+      ],
     );
 
-    setUp(() {
-      mockAuthService = MockAuthService();
-      authBloc = AuthBloc(authService: mockAuthService);
-    });
+    blocTest<AuthBloc, AuthState>(
+      'AuthCheckRequested: not authenticated',
+      build: () => AuthBloc(authService: _FakeAuth()),
+      act: (bloc) => bloc.add(AuthCheckRequested()),
+      expect: () => [isA<AuthLoading>(), isA<AuthUnauthenticated>()],
+    );
 
-    tearDown(() {
-      authBloc.close();
-    });
+    blocTest<AuthBloc, AuthState>(
+      'AuthLogoutRequested: success',
+      build: () => AuthBloc(
+        authService: _FakeAuth(authenticated: true, email: 'a@b.c'),
+      ),
+      act: (bloc) => bloc.add(AuthLogoutRequested()),
+      expect: () => [isA<AuthLoading>(), isA<AuthUnauthenticated>()],
+    );
 
-    test('initial state is AuthInitial', () {
-      expect(authBloc.state, isA<AuthInitial>());
-    });
-
-    group('AuthCheckRequested', () {
-      blocTest<AuthBloc, AuthState>(
-        'emits [AuthLoading, AuthAuthenticated] when session is valid',
-        build: () {
-          when(
-            mockAuthService.getCurrentUserFromSupabase(),
-          ).thenAnswer((_) async => tUser);
-          return authBloc;
-        },
-        act: (bloc) => bloc.add(AuthCheckRequested()),
-        wait: const Duration(milliseconds: 50),
-        expect: () => [isA<AuthLoading>(), AuthAuthenticated(tUser)],
-      );
-
-      blocTest<AuthBloc, AuthState>(
-        'emits [AuthLoading, AuthUnauthenticated] when there is no session',
-        build: () {
-          when(
-            mockAuthService.getCurrentUserFromSupabase(),
-          ).thenAnswer((_) async => null);
-          return authBloc;
-        },
-        act: (bloc) => bloc.add(AuthCheckRequested()),
-        wait: const Duration(milliseconds: 50),
-        expect: () => [isA<AuthLoading>(), AuthUnauthenticated()],
-      );
-    });
-
-    group('AuthLogoutRequested', () {
-      blocTest<AuthBloc, AuthState>(
-        'emits [AuthLoading, AuthUnauthenticated] when logout is successful',
-        build: () {
-          when(mockAuthService.signOut()).thenAnswer((_) async {});
-          return authBloc;
-        },
-        act: (bloc) => bloc.add(AuthLogoutRequested()),
-        expect: () => [isA<AuthLoading>(), isA<AuthUnauthenticated>()],
-        verify: (_) {
-          verify(mockAuthService.signOut()).called(1);
-        },
-      );
-
-      blocTest<AuthBloc, AuthState>(
-        'emits [AuthLoading, AuthFailure] when logout fails',
-        build: () {
-          when(mockAuthService.signOut()).thenThrow(Exception('Logout failed'));
-          return authBloc;
-        },
-        act: (bloc) => bloc.add(AuthLogoutRequested()),
-        expect: () => [isA<AuthLoading>(), isA<AuthFailure>()],
-        verify: (_) {
-          verify(mockAuthService.signOut()).called(1);
-        },
-      );
-    });
-
-    // Nota: Los tests de AuthLoginRequested requieren un BuildContext real
-    // y son más complejos de mockear debido a la navegación y creación de usuario.
-    // Se recomienda testearlos como tests de integración o widget tests.
+    blocTest<AuthBloc, AuthState>(
+      'AuthLogoutRequested: failure',
+      build: () => AuthBloc(
+        authService: _FakeAuth(
+          authenticated: true,
+          logoutThrows: true,
+        ),
+      ),
+      act: (bloc) => bloc.add(AuthLogoutRequested()),
+      expect: () => [isA<AuthLoading>(), isA<AuthFailure>()],
+    );
   });
 }
