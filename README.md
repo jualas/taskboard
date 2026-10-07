@@ -11,11 +11,19 @@
 
 Gestor de proyectos y tareas (Kanban y lista) con un **asistente IA que planifica el backlog**, proyectos **vinculados a su carpeta de código** y un **servidor MCP** para que agentes de IA como Cursor consulten y actualicen las tareas. Es la herramienta con la que planifico y sigo todos mis proyectos.
 
-![Lista de proyectos en producción](docs/screenshots/proyectos.png)
+![Tablero Kanban de un proyecto de ejemplo: tareas con complejidad, horas, subtareas, etiquetas y fecha](docs/screenshots/kanban.png)
 
-| Sugerencias automáticas a partir de los cambios del repo |
-|---|
-| ![Sugerencias del workspace: tareas propuestas a partir de commits y cambios sin commitear](docs/screenshots/sugerencias-workspace.png) |
+| Asistente IA del proyecto (planificar / agente) | Sugerencias automáticas desde los cambios del repo |
+|---|---|
+| ![Panel del asistente IA con modos Planificar y Agent (CLI) y el borrador de tareas](docs/screenshots/asistente-ia.png) | ![Sugerencias del workspace: tareas propuestas a partir de commits y cambios sin commitear](docs/screenshots/sugerencias-workspace.png) |
+
+<details><summary>Lista de proyectos</summary>
+
+![Lista de proyectos](docs/screenshots/proyectos.png)
+
+</details>
+
+*Capturas con datos de demostración, salvo las sugerencias, que son de producción.*
 
 ## De TFG a producto
 
