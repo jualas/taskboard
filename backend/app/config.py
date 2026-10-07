@@ -28,6 +28,46 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = "http://127.0.0.1:11434"
     local_llm_model: str = "qwen2.5:3b-instruct-q4_K_M"
+    # Plan de proyecto (muchas tareas): Ollama en CPU suele tardar varios minutos (ajusta por .env).
+    ollama_timeout_plan_sec: float = 600.0
+    ollama_timeout_sec: float = 180.0
+    deepseek_timeout_plan_sec: float = 300.0
+    deepseek_timeout_sec: float = 120.0
+
+    # Rutas permitidas para workspace_path (separadas por coma). Deben montarse en el contenedor API.
+    workspace_roots: str = (
+        "/mnt/datos/docker,"
+        "/mnt/datos/Proyectos,"
+        "/mnt/datos/nextcloud/nextcloud-service/nextcloud-data/data/jualas/files/Proyectos,"
+        "/home/jualas/datos/docker,"
+        "/home/jualas/datos/Proyectos"
+    )
+
+    # Fase 2: snapshots periódicos y sugerencias automáticas
+    workspace_snapshot_enabled: bool = True
+    workspace_snapshot_interval_min: int = 30
+    workspace_ai_suggestions: bool = True
+
+    # Cursor CLI Agent (`agent --print`) en el mini PC — prioridad sobre DeepSeek/Ollama
+    cursor_agent_enabled: bool = False
+    cursor_agent_bin: str = "agent"
+    cursor_agent_home: str = ""
+    cursor_agent_default_workspace: str = (
+        "/mnt/datos/Proyectos/taskboard"
+    )
+    cursor_agent_model: str = ""
+    cursor_agent_mode: str = "ask"
+    cursor_agent_timeout_sec: float = 300.0
+    cursor_agent_timeout_plan_sec: float = 1200.0
+    cursor_agent_approve_mcps: bool = True
+    cursor_api_key: str = ""
+    # Si false, no hace fallback a DeepSeek/Ollama cuando falla el CLI agent
+    cursor_agent_fallback_llm: bool = False
+
+    # Export TASKBOARD.md al workspace del proyecto (IDE / CLI fuera de la web)
+    taskboard_md_filename: str = "TASKBOARD.md"
+    taskboard_md_auto_export: bool = False
+    taskboard_status_md_paths: str = "docs/STATUS.md,STATUS.md,docs/status.md"
 
 
 settings = Settings()

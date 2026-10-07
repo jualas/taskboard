@@ -1,6 +1,6 @@
 # TaskBoard API (FastAPI + Postgres)
 
-Reemplaza el stack Supabase para persistencia, autenticación JWT y sugerencias IA.
+Backend de persistencia, autenticación JWT y sugerencias IA para TaskBoard.
 
 ## Requisitos
 
@@ -60,11 +60,11 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 OpenAPI: `http://127.0.0.1:8000/docs`
 
-## Migrar desde Supabase
+## Migrar datos desde un Postgres antiguo (opcional)
 
-1. `pg_dump` de la base actual y restaurar en Postgres “solo datos” o usar la misma instancia tras apagar Supabase.
-2. Aplicar `migrations/002_from_supabase.sql` (revisar conflictos de FK).
-3. Asignar contraseñas bcrypt a usuarios migrados:
+1. `pg_dump` / restaurar datos en la instancia nueva si aplica.
+2. Ajustar esquema y FK al modelo actual (`001_fresh_install.sql` como referencia) según tu dump.
+3. Asignar contraseñas bcrypt a usuarios que lo necesiten:
 
 ```bash
 export DATABASE_URL=...

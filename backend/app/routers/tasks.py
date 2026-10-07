@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, status
 from ..deps import CurrentUser, DbConn
 from ..permissions import require_edit, require_view
 from ..schemas import TaskIn
+from ..taskboard_md import auto_export_if_enabled
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
@@ -175,6 +176,7 @@ async def upsert_task(body: TaskIn, conn: DbConn, user: CurrentUser) -> TaskIn:
         body.created_at,
         body.updated_at,
     )
+    await auto_export_if_enabled(conn, body.project_id)
     return TaskIn(**_row_to_task_dict(row))
 
 
@@ -184,4 +186,6 @@ async def delete_task(task_id: int, conn: DbConn, user: CurrentUser) -> None:
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Tarea no encontrada")
     await require_edit(conn, row["project_id"], user)
+    project_id = int(row["project_id"])
     await conn.execute("delete from tasks where id = $1", task_id)
+    await auto_export_if_enabled(conn, project_id)

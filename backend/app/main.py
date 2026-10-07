@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+import asyncio
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,11 +8,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import close_pool
 from .routers import ai, auth, meta, projects, tasks, users
+from .workspace_sync import workspace_sync_loop
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    stop_event = asyncio.Event()
+    sync_task: asyncio.Task | None = None
+    if settings.workspace_snapshot_enabled:
+        sync_task = asyncio.create_task(workspace_sync_loop(stop_event))
     yield
+    stop_event.set()
+    if sync_task is not None:
+        sync_task.cancel()
+        try:
+            await sync_task
+        except asyncio.CancelledError:
+            pass
     await close_pool()
 
 
