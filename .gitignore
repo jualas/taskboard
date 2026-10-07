@@ -1,6 +1,7 @@
 # IDE / agentes
 .cursor/
 .idea/
+**/.claude/
 
 # Secretos y entornos locales (plantillas *.example sí van al repo)
 **/.env*
@@ -30,8 +31,8 @@ node_modules/
 **/node_modules/
 
 # Respuestas de prueba manual (no versionar)
-**/supabase_login_test_resp*.json
-
+**/*_test_resp*.json
+*.tar.gz
 # Logs y sistema
 *.log
 .DS_Store
