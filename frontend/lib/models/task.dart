@@ -74,6 +74,7 @@ class Task {
   final double kanbanPosition;
   @JsonKey(name: 'estimatedHours')
   final int? estimatedHours;
+  @JsonKey(unknownEnumValue: TaskComplexity.medium)
   final TaskComplexity complexity;
   final List<String> tags;
   @JsonKey(defaultValue: <Subtask>[])

@@ -29,7 +29,11 @@ Task _$TaskFromJson(Map<String, dynamic> json) => Task(
       : DateTime.parse(json['dueDate'] as String),
   kanbanPosition: (json['kanbanPosition'] as num).toDouble(),
   estimatedHours: (json['estimatedHours'] as num?)?.toInt(),
-  complexity: $enumDecode(_$TaskComplexityEnumMap, json['complexity']),
+  complexity: $enumDecode(
+    _$TaskComplexityEnumMap,
+    json['complexity'],
+    unknownValue: TaskComplexity.medium,
+  ),
   tags: (json['tags'] as List<dynamic>).map((e) => e as String).toList(),
   subtasks:
       (json['subtasks'] as List<dynamic>?)

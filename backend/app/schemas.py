@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -223,6 +223,14 @@ class ProjectMemberOut(BaseModel):
     created_at: datetime
 
 
+_COMPLEXITY_ALIASES = {
+    "low": "simple", "small": "simple", "easy": "simple", "baja": "simple", "simple": "simple",
+    "media": "medium", "medio": "medium", "moderate": "medium", "medium": "medium",
+    "high": "complex", "large": "complex", "hard": "complex", "alta": "complex",
+    "compleja": "complex", "complejo": "complex", "complex": "complex",
+}
+
+
 class TaskIn(BaseModel):
     id: int
     project_id: int
@@ -232,9 +240,19 @@ class TaskIn(BaseModel):
     due_date: datetime | None = None
     kanban_position: float = 1.0
     estimated_hours: int | None = None
-    complexity: str = "simple"
+    complexity: Literal["simple", "medium", "complex"] = "simple"
     tags: list[str] = Field(default_factory=list)
     subtasks: list[dict[str, Any]] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("complexity", mode="before")
+    @classmethod
+    def _normalize_complexity(cls, v: Any) -> Any:
+        # Los agentes IA a veces envían sinónimos («media», «high»…); el cliente
+        # solo admite estos tres valores y uno desconocido rompía el tablero.
+        if isinstance(v, str):
+            v = v.strip().lower()
+            return _COMPLEXITY_ALIASES.get(v, v)
+        return v
 
