@@ -1,0 +1,57 @@
+# TaskBoard en local: Postgres + API (FastAPI) + web (Flutter build servida por Caddy).
+#
+#   cp .env.example .env            # rellena JWT_SECRET (y DEEPSEEK_API_KEY si quieres IA)
+#   docker run --rm -v "$PWD/frontend":/app -w /app ghcr.io/cirruslabs/flutter:stable \
+#     bash -lc "flutter pub get && flutter build web --release"
+#   docker compose up -d --build
+#
+# Web: http://localhost:8580 · API: http://localhost:8101/docs
+# Las migraciones de backend/migrations se aplican solas la primera vez que se crea la BD.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: taskboard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskboard}
+      POSTGRES_DB: taskboard
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U taskboard -d taskboard']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://taskboard:${POSTGRES_PASSWORD:-taskboard}@postgres:5432/taskboard
+      # Sin montajes de carpetas: la vinculación de workspaces queda desactivada.
+      WORKSPACE_ROOTS: ${WORKSPACE_ROOTS:-}
+      WORKSPACE_SNAPSHOT_ENABLED: ${WORKSPACE_SNAPSHOT_ENABLED:-false}
+    ports:
+      - '127.0.0.1:${API_PORT:-8101}:8000'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'   # Ollama en el host, si se usa
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${WEB_PORT:-8580}:80'
+    volumes:
+      - ./frontend/build/web:/usr/share/caddy:ro
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

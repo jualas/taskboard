@@ -1,0 +1,19 @@
+# Web Flutter + proxy de la API en el mismo origen (config.json → useSameOriginProxy).
+:80 {
+  route {
+    handle_path /api-taskboard/* {
+      reverse_proxy api:8000 {
+        transport http {
+          # Las respuestas largas de IA (plan de proyecto) pueden tardar minutos.
+          read_timeout 1200s
+          write_timeout 1200s
+        }
+      }
+    }
+    handle {
+      root * /usr/share/caddy
+      try_files {path} /index.html
+      file_server
+    }
+  }
+}
