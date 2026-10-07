@@ -21,6 +21,6 @@ Este script:
 - Windows 10/11
 
 **Salida:**
-- Ejecutable: `build\windows\x64\runner\Release\frontend.exe`
+- Ejecutable: `build\windows\x64\runner\Release\taskboard.exe`
 - Paquete ZIP: `dist\frontend-windows-release.zip`
 

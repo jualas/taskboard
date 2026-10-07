@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.cifpcarlos3.tfg.frontend"
+    namespace = "es.jualas.taskboard"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973" // Actualizado para compatibilidad con plugins
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.cifpcarlos3.tfg.frontend"
+        applicationId = "es.jualas.taskboard"
         // Configuración específica para el proyecto TFG
         minSdk = 21 // Android 5.0 (API level 21)
         targetSdk = flutter.targetSdkVersion

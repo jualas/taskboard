@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "CIFP Carlos III" "\0"
-            VALUE "FileDescription", "Sistema TFG - CIFP Carlos III" "\0"
+            VALUE "CompanyName", "jualas" "\0"
+            VALUE "FileDescription", "TaskBoard" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Sistema TFG" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 CIFP Carlos III. All rights reserved." "\0"
-            VALUE "OriginalFilename", "frontend.exe" "\0"
-            VALUE "ProductName", "Sistema TFG" "\0"
+            VALUE "InternalName", "taskboard" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 jualas. MIT License." "\0"
+            VALUE "OriginalFilename", "taskboard.exe" "\0"
+            VALUE "ProductName", "TaskBoard" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

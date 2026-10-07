@@ -1,9 +1,9 @@
 @echo off
-REM Script para construir el instalador de Sistema TFG
+REM Script para construir el instalador de TaskBoard
 REM Requiere Inno Setup instalado
 
 echo ========================================
-echo Construyendo instalador Sistema TFG
+echo Construyendo instalador TaskBoard
 echo ========================================
 echo.
 
@@ -20,7 +20,7 @@ if not exist %INNO_SETUP_PATH% (
 )
 
 REM Verificar que la aplicación esté compilada
-if not exist "..\build\windows\x64\runner\Release\sistema_tfg.exe" (
+if not exist "..\build\windows\x64\runner\Release\taskboard.exe" (
     echo ERROR: La aplicación no está compilada
     echo Ejecuta primero: flutter build windows
     pause
@@ -31,7 +31,7 @@ echo Compilando instalador...
 echo.
 
 REM Compilar el script de Inno Setup
-%INNO_SETUP_PATH% "sistema_tfg_setup.iss"
+%INNO_SETUP_PATH% "taskboard_setup.iss"
 
 if %ERRORLEVEL% EQU 0 (
     echo.

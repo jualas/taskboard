@@ -1,11 +1,11 @@
-; Script de Inno Setup para Sistema TFG
+; Script de Inno Setup para TaskBoard
 ; Genera un instalador .exe para Windows
 
-#define MyAppName "Sistema TFG"
+#define MyAppName "TaskBoard"
 #define MyAppVersion "1.0.1"
-#define MyAppPublisher "CIFP"
-#define MyAppURL "https://github.com/elmosca/taskboard"
-#define MyAppExeName "sistema_tfg.exe"
+#define MyAppPublisher "jualas"
+#define MyAppURL "https://github.com/jualas/taskboard"
+#define MyAppExeName "taskboard.exe"
 #define MyAppId "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D"
 
 [Setup]
@@ -49,7 +49,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 ; Ejecutable principal
-Source: "..\build\windows\x64\runner\Release\sistema_tfg.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\build\windows\x64\runner\Release\taskboard.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 ; DLLs necesarios
 Source: "..\build\windows\x64\runner\Release\flutter_windows.dll"; DestDir: "{app}"; Flags: ignoreversion

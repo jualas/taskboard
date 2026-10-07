@@ -8,12 +8,12 @@ Windows Registry Editor Version 5.00
 "URL Protocol"=""
 
 [HKEY_CLASSES_ROOT\tfgapp\DefaultIcon]
-@="C:\\dev\\taskboard\\frontend\\build\\windows\\x64\\runner\\Release\\frontend.exe,1"
+@="C:\\dev\\taskboard\\frontend\\build\\windows\\x64\\runner\\Release\\taskboard.exe,1"
 
 [HKEY_CLASSES_ROOT\tfgapp\shell]
 
 [HKEY_CLASSES_ROOT\tfgapp\shell\open]
 
 [HKEY_CLASSES_ROOT\tfgapp\shell\open\command]
-@="\"C:\\dev\\taskboard\\frontend\\build\\windows\\x64\\runner\\Release\\frontend.exe\" \"%1\""
+@="\"C:\\dev\\taskboard\\frontend\\build\\windows\\x64\\runner\\Release\\taskboard.exe\" \"%1\""
 

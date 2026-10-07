@@ -9,7 +9,7 @@ Write-Host "🔧 Registrando protocolo tfgapp:// para deep links..." -Foreground
 
 # Obtener ruta del proyecto
 $projectPath = Split-Path -Parent $PSScriptRoot
-$exePath = Join-Path $projectPath "build\windows\x64\runner\$BuildType\frontend.exe"
+$exePath = Join-Path $projectPath "build\windows\x64\runner\$BuildType\taskboard.exe"
 
 Write-Host "📁 Ruta del ejecutable: $exePath" -ForegroundColor Yellow
 

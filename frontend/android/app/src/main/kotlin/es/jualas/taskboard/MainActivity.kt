@@ -1,4 +1,4 @@
-package com.cifpcarlos3.tfg.frontend
+package es.jualas.taskboard
 
 import io.flutter.embedding.android.FlutterActivity
 

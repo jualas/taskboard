@@ -44,7 +44,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Verificar que el build fue exitoso
-$exePath = "build\windows\x64\runner\Release\frontend.exe"
+$exePath = "build\windows\x64\runner\Release\taskboard.exe"
 if (-not (Test-Path $exePath)) {
     Write-Host "`n❌ Error: No se encontró el ejecutable en $exePath" -ForegroundColor Red
     Write-Host "   Verifica que la construcción se completó correctamente" -ForegroundColor Yellow
@@ -113,6 +113,6 @@ Write-Host "   2. Distribuir el ZIP: $zipPath" -ForegroundColor Cyan
 Write-Host "   3. O crear un instalador con Inno Setup" -ForegroundColor Cyan
 Write-Host "`n💡 Para probar la aplicación:" -ForegroundColor Yellow
 Write-Host "   cd build\windows\x64\runner\Release" -ForegroundColor Gray
-Write-Host "   .\frontend.exe" -ForegroundColor Gray
+Write-Host "   .\taskboard.exe" -ForegroundColor Gray
 Write-Host ""
 

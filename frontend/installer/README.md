@@ -1,4 +1,4 @@
-# Instalador para Sistema TFG - Inno Setup
+# Instalador para TaskBoard - Inno Setup
 
 Este directorio contiene los archivos necesarios para generar un instalador `.exe` para la aplicación Windows usando Inno Setup.
 
@@ -17,7 +17,7 @@ Este directorio contiene los archivos necesarios para generar un instalador `.ex
 ### Opción 1: Usando Inno Setup Compiler (GUI)
 
 1. Abre Inno Setup Compiler
-2. Abre el archivo `sistema_tfg_setup.iss`
+2. Abre el archivo `taskboard_setup.iss`
 3. Haz clic en "Build" > "Compile" (o presiona F9)
 4. El instalador se generará en `build\installer\SistemaTFG_Installer_v1.0.0.exe`
 
@@ -26,7 +26,7 @@ Este directorio contiene los archivos necesarios para generar un instalador `.ex
 Desde el directorio `installer`, ejecuta:
 
 ```bash
-"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" sistema_tfg_setup.iss
+"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" taskboard_setup.iss
 ```
 
 O si tienes Inno Setup en otra ubicación, ajusta la ruta.
@@ -42,7 +42,7 @@ build_installer.bat
 ## Estructura del Instalador
 
 El instalador incluye:
-- ✅ Ejecutable principal (`sistema_tfg.exe`)
+- ✅ Ejecutable principal (`taskboard.exe`)
 - ✅ Todas las DLLs necesarias
 - ✅ Carpeta `data` completa con recursos y assets
 - ✅ Acceso directo en el menú de inicio
@@ -51,7 +51,7 @@ El instalador incluye:
 
 ## Personalización
 
-Para modificar el instalador, edita `sistema_tfg_setup.iss`:
+Para modificar el instalador, edita `taskboard_setup.iss`:
 
 - **Versión**: Cambia `#define MyAppVersion` en la línea 6
 - **Nombre**: Cambia `#define MyAppName` en la línea 5
