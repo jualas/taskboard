@@ -31,11 +31,21 @@ def workspace_roots() -> list[Path]:
     return out
 
 
-def _similar_path_hint(path_str: str) -> str | None:
+def _within_roots(path: Path, roots: list[Path]) -> bool:
+    for root in roots:
+        try:
+            path.relative_to(root)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def _similar_path_hint(resolved: Path, roots: list[Path]) -> str | None:
     """Si el último segmento parece un typo, sugiere carpeta hermana bajo el mismo padre."""
-    parent = Path(path_str).parent
-    name = Path(path_str).name
-    if not name or not parent.is_dir():
+    parent = resolved.parent
+    name = resolved.name
+    if not name or not _within_roots(parent, roots) or not parent.is_dir():
         return None
     try:
         siblings = [entry.name for entry in parent.iterdir() if entry.is_dir()]
@@ -44,48 +54,45 @@ def _similar_path_hint(path_str: str) -> str | None:
     matches = difflib.get_close_matches(name, siblings, n=1, cutoff=0.72)
     if not matches:
         return None
-    return str((parent / matches[0]).resolve())
+    return str(parent / matches[0])
 
 
 def normalize_workspace_path(path_str: str | None) -> str:
-    """Valida y devuelve ruta absoluta, o cadena vacía si se borra."""
+    """Valida y devuelve ruta absoluta, o cadena vacía si se borra.
+
+    Comprueba WORKSPACE_ROOTS antes de tocar el disco: una ruta fuera de las raíces
+    no revela si existe ni qué carpetas hay a su lado.
+    """
     if path_str is None:
         return ""
     cleaned = path_str.strip()
     if not cleaned:
         return ""
-    try:
-        resolved = Path(cleaned).expanduser().resolve()
-    except OSError as e:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"Ruta inválida: {e!s}",
-        ) from e
-    if not resolved.exists():
-        hint = _similar_path_hint(cleaned)
-        detail = "La ruta no existe en el servidor"
-        if hint:
-            detail += f". ¿Quisiste decir «{hint}»?"
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail)
-    if not resolved.is_dir():
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La ruta debe ser un directorio")
     roots = workspace_roots()
     if not roots:
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "WORKSPACE_ROOTS no está configurado en el API",
         )
-    for root in roots:
-        try:
-            resolved.relative_to(root)
-            return str(resolved)
-        except ValueError:
-            continue
-    allowed = ", ".join(str(r) for r in roots)
-    raise HTTPException(
-        status.HTTP_400_BAD_REQUEST,
-        f"Ruta fuera de WORKSPACE_ROOTS permitidas ({allowed})",
-    )
+    try:
+        resolved = Path(cleaned).expanduser().resolve()
+    except (OSError, RuntimeError) as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ruta inválida") from e
+    if not _within_roots(resolved, roots):
+        allowed = ", ".join(str(r) for r in roots)
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Ruta fuera de WORKSPACE_ROOTS permitidas ({allowed})",
+        )
+    if not resolved.exists():
+        hint = _similar_path_hint(resolved, roots)
+        detail = "La ruta no existe en el servidor"
+        if hint:
+            detail += f". ¿Quisiste decir «{hint}»?"
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail)
+    if not resolved.is_dir():
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "La ruta debe ser un directorio")
+    return str(resolved)
 
 
 async def _run(cmd: list[str], *, cwd: Path, timeout: float = 20.0) -> tuple[int, str, str]:
@@ -167,7 +174,7 @@ async def _docker_snapshot(path: Path) -> dict[str, Any] | None:
         if code == 0:
             break
     else:
-        docker["error"] = err or "docker compose ps falló (¿socket montado en el contenedor?)"
+        docker["error"] = err or "Estado de Docker no disponible desde el API (sin acceso al socket por seguridad)"
         return docker
 
     services: list[dict[str, str]] = []

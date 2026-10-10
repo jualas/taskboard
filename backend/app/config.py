@@ -19,8 +19,15 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_days: int = 30
 
-    allow_registration: bool = True
+    # Registro abierto: solo en local. En una instancia publicada, false y altas manuales.
+    allow_registration: bool = False
     cors_origins: str = "*"
+    # Swagger/OpenAPI (/docs, /openapi.json): desactivado salvo que se pida.
+    enable_docs: bool = False
+
+    # Correos (separados por coma) que pueden usar carpetas del servidor y Cursor Agent.
+    # Vacío = nadie: el asistente usa solo DeepSeek/Ollama sin acceso a disco.
+    workspace_admin_emails: str = ""
 
     deepseek_api_key: str = ""
     deepseek_model: str = "deepseek-chat"
@@ -71,3 +78,17 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def workspace_admin_emails() -> set[str]:
+    return {e.strip().lower() for e in settings.workspace_admin_emails.split(",") if e.strip()}
+
+
+def assert_secure_settings() -> None:
+    """Falla al arrancar si el secreto JWT es el de desarrollo o demasiado corto."""
+    secret = settings.jwt_secret or ""
+    if secret == _DEV_JWT or len(secret) < 32:
+        raise RuntimeError(
+            "JWT_SECRET no configurado o demasiado corto (mínimo 32 caracteres). "
+            "Genera uno con: openssl rand -base64 48"
+        )

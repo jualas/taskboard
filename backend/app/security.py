@@ -2,20 +2,26 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
+import jwt
 
 from .config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _pw_bytes(password: str) -> bytes:
+    # bcrypt solo usa 72 bytes; passlib truncaba igual, así los hashes existentes siguen valiendo.
+    return password.encode("utf-8")[:72]
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(_pw_bytes(plain), hashed.encode("utf-8"))
+    except ValueError:
+        return False
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_pw_bytes(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def create_access_token(sub: str, extra: dict[str, Any] | None = None) -> str:
@@ -28,12 +34,17 @@ def create_access_token(sub: str, extra: dict[str, Any] | None = None) -> str:
 
 def decode_token(token: str) -> str | None:
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+            options={"require": ["exp", "sub"]},
+        )
         sub = payload.get("sub")
         if sub is None:
             return None
         return str(sub)
-    except JWTError:
+    except jwt.PyJWTError:
         return None
 
 

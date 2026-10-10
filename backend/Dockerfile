@@ -5,12 +5,11 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Sin cliente Docker ni socket: el API no debe poder controlar el host.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     git \
-    docker.io \
-    docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -19,6 +18,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY app ./app
 COPY migrations ./migrations
+
+# Usuario sin privilegios (uid 1000 = usuario del host, para leer la sesión de Cursor y escribir en workspaces).
+RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin app
+USER 1000:1000
 
 EXPOSE 8000
 

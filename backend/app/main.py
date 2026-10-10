@@ -5,7 +5,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import settings
+from .config import assert_secure_settings, settings
 from .db import close_pool
 from .routers import ai, auth, meta, projects, tasks, users
 from .workspace_sync import workspace_sync_loop
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    assert_secure_settings()
     stop_event = asyncio.Event()
     sync_task: asyncio.Task | None = None
     if settings.workspace_snapshot_enabled:
@@ -37,7 +38,14 @@ def _cors_origins() -> list[str]:
     return [o.strip() for o in raw.split(",") if o.strip()]
 
 
-app = FastAPI(title="TaskBoard API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="TaskBoard API",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.enable_docs else None,
+    redoc_url="/redoc" if settings.enable_docs else None,
+    openapi_url="/openapi.json" if settings.enable_docs else None,
+)
 _origins = _cors_origins()
 app.add_middleware(
     CORSMiddleware,

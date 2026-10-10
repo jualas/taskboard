@@ -5,9 +5,7 @@ import os
 import sys
 
 import asyncpg
-from passlib.context import CryptContext
-
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 
 
 async def main() -> None:
@@ -21,7 +19,7 @@ async def main() -> None:
         sys.exit(1)
     conn = await asyncpg.connect(url)
     try:
-        h = pwd.hash(password)
+        h = bcrypt.hashpw(password.encode("utf-8")[:72], bcrypt.gensalt()).decode("utf-8")
         r = await conn.execute(
             "update app_users set password_hash = $2 where lower(email) = lower($1)",
             email,

@@ -2,6 +2,8 @@ from uuid import UUID
 
 import asyncpg
 
+from .config import workspace_admin_emails
+
 
 async def is_project_owner(conn: asyncpg.Connection, project_id: int, user_id: UUID) -> bool:
     row = await conn.fetchrow(
@@ -56,3 +58,22 @@ async def require_owner(conn: asyncpg.Connection, project_id: int, user_id: UUID
         from fastapi import HTTPException, status
 
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Solo el propietario puede hacer esto")
+
+
+async def is_workspace_admin(conn: asyncpg.Connection, user_id: UUID) -> bool:
+    """Acceso a carpetas del servidor y a Cursor Agent (WORKSPACE_ADMIN_EMAILS)."""
+    admins = workspace_admin_emails()
+    if not admins:
+        return False
+    email = await conn.fetchval("select lower(email) from app_users where id = $1", user_id)
+    return email in admins
+
+
+async def require_workspace_admin(conn: asyncpg.Connection, user_id: UUID) -> None:
+    if not await is_workspace_admin(conn, user_id):
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Solo los administradores del servidor pueden usar carpetas workspace y Cursor Agent",
+        )
