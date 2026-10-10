@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import difflib
 from pathlib import Path
 from typing import Any
@@ -74,15 +75,33 @@ def normalize_workspace_path(path_str: str | None) -> str:
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "WORKSPACE_ROOTS no está configurado en el API",
         )
+    # Normalización de texto (sin tocar el disco) y comprobación de raíces; después resolve()
+    # sigue enlaces simbólicos y se vuelve a comprobar que el destino real sigue dentro.
+    candidate = os.path.normpath(os.path.abspath(os.path.expanduser(cleaned)))
+    for root in roots:
+        prefix = str(root)
+        if not candidate.startswith(prefix):
+            continue
+        if candidate != prefix and not candidate.startswith(prefix + os.sep):
+            continue
+        return _existing_dir_within_roots(candidate, roots)
+    allowed = ", ".join(str(r) for r in roots)
+    raise HTTPException(
+        status.HTTP_400_BAD_REQUEST,
+        f"Ruta fuera de WORKSPACE_ROOTS permitidas ({allowed})",
+    )
+
+
+def _existing_dir_within_roots(candidate: str, roots: list[Path]) -> str:
+    """candidate ya está normalizada y dentro de una raíz; resolve() sigue enlaces simbólicos."""
     try:
-        resolved = Path(cleaned).expanduser().resolve()
+        resolved = Path(candidate).resolve()
     except (OSError, RuntimeError) as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ruta inválida") from e
     if not _within_roots(resolved, roots):
-        allowed = ", ".join(str(r) for r in roots)
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            f"Ruta fuera de WORKSPACE_ROOTS permitidas ({allowed})",
+            "La ruta apunta (enlace simbólico) fuera de WORKSPACE_ROOTS",
         )
     if not resolved.exists():
         hint = _similar_path_hint(resolved, roots)
