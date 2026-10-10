@@ -11,7 +11,13 @@ from ..agent_sessions import (
     list_agent_runs,
 )
 from ..deps import CurrentUser, DbConn
-from ..permissions import is_project_owner, require_edit, require_owner, require_view
+from ..permissions import (
+    is_project_owner,
+    require_edit,
+    require_owner,
+    require_view,
+    require_workspace_admin,
+)
 from ..schemas import (
     AgentRunOut,
     AgentSessionOut,
@@ -98,7 +104,10 @@ async def create_project(body: ProjectCreate, conn: DbConn, user: CurrentUser) -
     nid = await _next_project_id(conn)
     title = (body.title or "").strip() or "Sin título"
     st = body.status if body.status in ("planning", "development", "completed", "archived") else "planning"
-    ws = normalize_workspace_path(body.workspace_path) if (body.workspace_path or "").strip() else ""
+    ws = ""
+    if (body.workspace_path or "").strip():
+        await require_workspace_admin(conn, user)
+        ws = normalize_workspace_path(body.workspace_path)
     row = await conn.fetchrow(
         """
         insert into projects (id, title, description, status, workspace_path, owner_id, created_at, updated_at)
@@ -119,9 +128,9 @@ async def create_project(body: ProjectCreate, conn: DbConn, user: CurrentUser) -
 
 @router.post("/workspace-snapshot-preview")
 async def preview_workspace_snapshot(
-    body: WorkspacePathBody, user: CurrentUser
+    body: WorkspacePathBody, conn: DbConn, user: CurrentUser
 ) -> dict:
-    _ = user
+    await require_workspace_admin(conn, user)
     path = normalize_workspace_path(body.path)
     return await build_workspace_snapshot(path)
 
@@ -129,6 +138,7 @@ async def preview_workspace_snapshot(
 @router.get("/workspace-inventory", response_model=WorkspaceInventoryOut)
 async def workspace_inventory(conn: DbConn, user: CurrentUser) -> WorkspaceInventoryOut:
     """Inventario de carpetas en WORKSPACE_ROOTS y su vínculo con proyectos."""
+    await require_workspace_admin(conn, user)
     scanned = await asyncio.to_thread(scan_workspace_inventory)
     scanned_paths = {e["path"] for e in scanned}
 
@@ -263,6 +273,7 @@ async def export_taskboard_md(
 ) -> TaskboardMdOut:
     """Escribe TASKBOARD.md (u otro nombre) en la carpeta workspace del proyecto."""
     await require_edit(conn, project_id, user)
+    await require_workspace_admin(conn, user)
     opts = body or TaskboardMdExportBody()
     data = await build_taskboard_md_for_project(
         conn,
@@ -300,6 +311,7 @@ async def prepare_ide_session(
 ) -> IdeSessionOut:
     """Exporta TASKBOARD.md y devuelve el prompt listo para pegar en Cursor."""
     await require_edit(conn, project_id, user)
+    await require_workspace_admin(conn, user)
     md_data = await build_taskboard_md_for_project(conn, project_id=project_id)
     write_taskboard_md_file(file_path=md_data["file_path"], content=md_data["content"])
     export_out = TaskboardMdOut(**md_data, written=True)
@@ -314,6 +326,7 @@ async def project_by_workspace_path(
     path: str, conn: DbConn, user: CurrentUser
 ) -> ProjectOut:
     """Resuelve el proyecto vinculado a una carpeta workspace (p. ej. cwd de Cursor)."""
+    await require_workspace_admin(conn, user)
     resolved = normalize_workspace_path(path)
     row = await conn.fetchrow(
         f"""
@@ -483,6 +496,8 @@ async def patch_project(
         if body.status in ("planning", "development", "completed", "archived"):
             st = body.status
     ws = row["workspace_path"] or ""
+    if body.workspace_path is not None and body.workspace_path.strip() not in ("", ws):
+        await require_workspace_admin(conn, user)
     if body.workspace_path is not None:
         ws = normalize_workspace_path(body.workspace_path)
     updated = await conn.fetchrow(
@@ -549,6 +564,7 @@ async def trigger_workspace_sync(
     project_id: int, conn: DbConn, user: CurrentUser
 ) -> dict:
     await require_edit(conn, project_id, user)
+    await require_workspace_admin(conn, user)
     return await sync_project_workspace(conn, project_id)
 
 
@@ -720,6 +736,7 @@ async def project_workspace_snapshot(
     project_id: int, conn: DbConn, user: CurrentUser
 ) -> dict:
     await require_view(conn, project_id, user)
+    await require_workspace_admin(conn, user)
     ws = await conn.fetchval(
         "select workspace_path from projects where id = $1",
         project_id,

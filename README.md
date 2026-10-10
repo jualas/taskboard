@@ -34,7 +34,7 @@ Después lo convertí en una herramienta propia y lo rehíce por dentro:
 | | TFG (2025) | TaskBoard (2026) |
 |---|---|---|
 | Backend | Supabase (BaaS) | **API propia FastAPI + PostgreSQL** (asyncpg, SQL a mano) |
-| Autenticación | Supabase Auth | JWT propio (python-jose + bcrypt) |
+| Autenticación | Supabase Auth | JWT propio (PyJWT + bcrypt) |
 | IA | — | Chat de backlog, tareas desde un brief, agente Cursor CLI |
 | Integración | — | Servidor **MCP** y export de `TASKBOARD.md` a cada repo |
 | Despliegue | Supabase cloud | Docker Compose autoalojado + Caddy + Cloudflare Tunnel |
@@ -84,7 +84,7 @@ flowchart LR
 
 | Capa | Tecnología |
 |---|---|
-| API | Python 3.12, **FastAPI**, Pydantic v2, **asyncpg** (SQL sin ORM), python-jose (JWT), passlib/bcrypt, httpx |
+| API | Python 3.12, **FastAPI**, Pydantic v2, **asyncpg** (SQL sin ORM), PyJWT, bcrypt, httpx |
 | Base de datos | **PostgreSQL 16**, migraciones SQL versionadas (`backend/migrations/`) |
 | Cliente | **Flutter Web** (Dart 3), flutter_bloc, go_router, json_serializable |
 | IA | DeepSeek y Ollama (API compatible con OpenAI), Cursor Agent CLI, streaming SSE |

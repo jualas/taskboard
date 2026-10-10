@@ -22,7 +22,7 @@ from ..cursor_agent import (
     stream_cursor_agent,
 )
 from ..deps import CurrentUser, DbConn
-from ..permissions import require_view
+from ..permissions import is_workspace_admin, require_view, require_workspace_admin
 from ..schemas import AiAgentStreamBody, AiChatBody, AiSuggestBody, AgentRunOut, AgentSessionOut
 from ..repo_context import read_workspace_docs_for_ai
 from ..workspace import build_workspace_snapshot, format_snapshot_for_ai
@@ -150,6 +150,7 @@ async def _workspace_context_for_project(
 @router.post("/suggest")
 async def suggest_tasks(
     body: AiSuggestBody,
+    conn: DbConn,
     user: CurrentUser,
     x_operation_id: str | None = Header(None, alias="x-operation-id"),
 ) -> dict[str, Any]:
@@ -190,6 +191,7 @@ async def suggest_tasks(
             messages,
             long_output=long_output,
             chat=False,
+            allow_agent=await is_workspace_admin(conn, user),
         )
     except HTTPException:
         raise
@@ -219,11 +221,15 @@ async def chat_project_plan(
     if history[-1].role.strip().lower() != "user":
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "El último mensaje debe ser del usuario.")
 
+    if body.project_id is not None:
+        await require_view(conn, body.project_id, user)
+    admin = await is_workspace_admin(conn, user)
+
     align_request = _user_wants_alignment(history)
-    if body.project_id is not None and align_request:
+    if admin and body.project_id is not None and align_request:
         await _export_taskboard_before_chat(conn, body.project_id)
 
-    ws_text = await _workspace_context_for_project(conn, body.project_id, user)
+    ws_text = await _workspace_context_for_project(conn, body.project_id, user) if admin else ""
     draft_json = json.dumps(body.draftTasks or [], ensure_ascii=False)
     if len(draft_json) > 12000:
         draft_json = draft_json[:12000] + "…"
@@ -247,7 +253,7 @@ async def chat_project_plan(
             llm_messages.append({"role": role, "content": content})
 
     ws_path = ""
-    if body.project_id is not None:
+    if admin and body.project_id is not None:
         ws_val = await conn.fetchval(
             "select workspace_path from projects where id = $1",
             body.project_id,
@@ -266,6 +272,7 @@ async def chat_project_plan(
             long_output=long_output,
             chat=True,
             workspace_path=ws_path,
+            allow_agent=admin,
         )
     except HTTPException:
         raise
@@ -287,10 +294,7 @@ async def chat_project_plan(
 async def _workspace_path_for_project(conn, project_id: int | None, user) -> str:
     if project_id is None:
         return resolve_workspace_path("")
-    try:
-        await require_view(conn, project_id, user)
-    except HTTPException:
-        return resolve_workspace_path("")
+    await require_view(conn, project_id, user)
     ws_val = await conn.fetchval(
         "select workspace_path from projects where id = $1",
         project_id,
@@ -310,6 +314,7 @@ async def agent_stream(
             status.HTTP_503_SERVICE_UNAVAILABLE,
             "Cursor Agent CLI no está habilitado en el API.",
         )
+    await require_workspace_admin(conn, user)
 
     prompt = (body.prompt or "").strip()
     if not prompt:
@@ -430,8 +435,10 @@ async def _invoke_llm(
     long_output: bool = False,
     chat: bool = False,
     workspace_path: str = "",
+    allow_agent: bool = False,
 ) -> dict[str, Any]:
-    ws = resolve_workspace_path(workspace_path)
+    # Cursor Agent lee (y con execute, escribe) en disco del servidor: solo administradores.
+    ws = resolve_workspace_path(workspace_path) if allow_agent else ""
     if settings.cursor_agent_enabled and ws:
         try:
             raw = await run_cursor_agent_messages(

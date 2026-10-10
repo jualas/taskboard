@@ -20,6 +20,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY app ./app
 COPY migrations ./migrations
 
+# Usuario sin privilegios (uid 1000 = usuario del host, para leer la sesión de Cursor y escribir en workspaces).
+RUN useradd --uid 1000 --create-home --shell /usr/sbin/nologin app
+USER 1000:1000
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
