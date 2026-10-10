@@ -29,6 +29,7 @@ from ..workspace import build_workspace_snapshot, format_snapshot_for_ai
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
+_GENERIC_AI_ERROR = "Error IA (detalle en los logs del API)"
 
 SYSTEM_PROMPT = """Eres un asistente para equipos que trabajan con metodologías ágiles (Scrum/Kanban): desglosas peticiones en UNA tarea principal bien definida para el tablero.
 
@@ -197,7 +198,7 @@ async def suggest_tasks(
         raise
     except Exception as e:
         logger.exception("ai.suggest falló")
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Error IA: {e!s}") from e
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, _GENERIC_AI_ERROR) from e
 
     if plan and isinstance(result.get("tasks"), list):
         result["tasks"] = result["tasks"][:16]
@@ -283,7 +284,7 @@ async def chat_project_plan(
         ) from e
     except Exception as e:
         logger.exception("ai.chat falló")
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Error IA: {e!s}") from e
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, _GENERIC_AI_ERROR) from e
 
     tasks = result.get("tasks")
     if isinstance(tasks, list):
@@ -392,7 +393,7 @@ async def agent_stream(
             had_error = True
             result_preview = str(e)
             logger.exception("agent-stream falló")
-            err = json.dumps({"kind": "error", "text": str(e)}, ensure_ascii=False)
+            err = json.dumps({"kind": "error", "text": _GENERIC_AI_ERROR}, ensure_ascii=False)
             yield f"data: {err}\n\n"
         finally:
             if pid is not None:
@@ -463,7 +464,7 @@ async def _invoke_llm(
             if not settings.cursor_agent_fallback_llm:
                 raise HTTPException(
                     status.HTTP_502_BAD_GATEWAY,
-                    f"Cursor Agent CLI: {e!s}",
+                    "Cursor Agent CLI falló (detalle en los logs del API)",
                 ) from e
             logger.info("Cursor agent: usando fallback DeepSeek/Ollama")
 
