@@ -382,12 +382,14 @@ async def agent_stream(
         except FileNotFoundError as e:
             had_error = True
             result_preview = str(e)
-            err = json.dumps({"kind": "error", "text": str(e)}, ensure_ascii=False)
+            logger.warning("agent-stream: %s", e)
+            err = json.dumps({"kind": "error", "text": "Cursor Agent CLI no encontrado en el servidor"}, ensure_ascii=False)
             yield f"data: {err}\n\n"
         except TimeoutError as e:
             had_error = True
             result_preview = str(e)
-            err = json.dumps({"kind": "error", "text": str(e)}, ensure_ascii=False)
+            logger.warning("agent-stream: %s", e)
+            err = json.dumps({"kind": "error", "text": "Cursor Agent: tiempo de espera agotado"}, ensure_ascii=False)
             yield f"data: {err}\n\n"
         except Exception as e:
             had_error = True
