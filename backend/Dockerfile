@@ -5,12 +5,11 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Sin cliente Docker ni socket: el API no debe poder controlar el host.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     git \
-    docker.io \
-    docker-compose \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

@@ -167,7 +167,7 @@ async def _docker_snapshot(path: Path) -> dict[str, Any] | None:
         if code == 0:
             break
     else:
-        docker["error"] = err or "docker compose ps falló (¿socket montado en el contenedor?)"
+        docker["error"] = err or "Estado de Docker no disponible desde el API (sin acceso al socket por seguridad)"
         return docker
 
     services: list[dict[str, str]] = []
