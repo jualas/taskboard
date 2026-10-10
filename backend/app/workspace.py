@@ -78,14 +78,20 @@ def normalize_workspace_path(path_str: str | None) -> str:
     # Normalización de texto (sin tocar el disco) y comprobación de raíces; después resolve()
     # sigue enlaces simbólicos y se vuelve a comprobar que el destino real sigue dentro.
     candidate = os.path.normpath(os.path.abspath(os.path.expanduser(cleaned)))
-    if not any(candidate == str(r) or candidate.startswith(str(r) + os.sep) for r in roots):
+    inside: str | None = None
+    for root in roots:
+        base = str(root)
+        if candidate == base or candidate.startswith(base + os.sep):
+            inside = candidate
+            break
+    if inside is None:
         allowed = ", ".join(str(r) for r in roots)
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             f"Ruta fuera de WORKSPACE_ROOTS permitidas ({allowed})",
         )
     try:
-        resolved = Path(candidate).resolve()
+        resolved = Path(inside).resolve()
     except (OSError, RuntimeError) as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Ruta inválida") from e
     if not _within_roots(resolved, roots):
