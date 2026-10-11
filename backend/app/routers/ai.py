@@ -23,6 +23,7 @@ from ..cursor_agent import (
 )
 from ..deps import CurrentUser, DbConn
 from ..permissions import is_workspace_admin, require_view, require_workspace_admin
+from ..prompt_safety import DATA_NOTICE, new_boundary, wrap_untrusted
 from ..schemas import AiAgentStreamBody, AiChatBody, AiSuggestBody, AgentRunOut, AgentSessionOut
 from ..repo_context import read_workspace_docs_for_ai
 from ..workspace import build_workspace_snapshot, format_snapshot_for_ai
@@ -30,6 +31,10 @@ from ..workspace import build_workspace_snapshot, format_snapshot_for_ai
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
 _GENERIC_AI_ERROR = "Error IA (detalle en los logs del API)"
+_NO_ENGINE_ERROR = (
+    "El asistente IA no está disponible para tu usuario: el servidor no tiene ningún "
+    "modelo configurado (DeepSeek u otro compatible con OpenAI, u Ollama)."
+)
 
 SYSTEM_PROMPT = """Eres un asistente para equipos que trabajan con metodologías ágiles (Scrum/Kanban): desglosas peticiones en UNA tarea principal bien definida para el tablero.
 
@@ -235,16 +240,24 @@ async def chat_project_plan(
     if len(draft_json) > 12000:
         draft_json = draft_json[:12000] + "…"
 
-    system = (
-        f"{SYSTEM_PROMPT_PROJECT_CHAT}\n\n"
-        f"Proyecto: {title or '(sin título)'}\n"
-        f"Descripción:\n{desc or '(sin descripción)'}\n\n"
-    )
+    # El system solo lleva instrucciones propias; el contexto del proyecto va como datos
+    # delimitados junto a la última petición del usuario.
+    boundary = new_boundary()
+    blocks = [
+        wrap_untrusted(
+            "Proyecto",
+            f"Título: {title or '(sin título)'}\nDescripción:\n{desc or '(sin descripción)'}",
+            boundary=boundary,
+        )
+    ]
     if ws_text:
-        system += f"Estado del workspace en disco:\n{ws_text}\n\n"
-    system += f"Borrador actual de tareas (JSON):\n{draft_json}"
+        blocks.append(wrap_untrusted("Estado del workspace en disco", ws_text, boundary=boundary))
+    blocks.append(wrap_untrusted("Borrador actual de tareas (JSON)", draft_json, boundary=boundary))
+    context = "\n\n".join(blocks)
 
-    llm_messages: list[dict[str, str]] = [{"role": "system", "content": system}]
+    llm_messages: list[dict[str, str]] = [
+        {"role": "system", "content": f"{SYSTEM_PROMPT_PROJECT_CHAT}\n\n{DATA_NOTICE}"}
+    ]
     for msg in history:
         role = msg.role.strip().lower()
         if role not in ("user", "assistant"):
@@ -252,6 +265,10 @@ async def chat_project_plan(
         content = (msg.content or "").strip()
         if content:
             llm_messages.append({"role": role, "content": content})
+    last = llm_messages[-1]
+    if last["role"] != "user":
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "El último mensaje debe ser del usuario.")
+    last["content"] = f"{context}\n\nPetición del usuario:\n{last['content']}"
 
     ws_path = ""
     if admin and body.project_id is not None:
@@ -371,7 +388,10 @@ async def agent_stream(
                 if sid:
                     session_id = sid
                 kind = event.get("kind")
-                if kind == "done":
+                if kind == "tool":
+                    # Auditoría: qué leyó o ejecutó el agente (sin el resultado).
+                    logger.info("agent-stream tool (project %s): %s", pid, event.get("text"))
+                elif kind == "done":
                     result_preview = str(event.get("text") or "")
                     had_error = bool(event.get("is_error"))
                 elif kind == "error":
@@ -472,7 +492,31 @@ async def _invoke_llm(
 
     if settings.deepseek_api_key.strip():
         return await _call_deepseek(messages, long_output=long_output, chat=chat)
-    return await _call_ollama(messages, long_output=long_output, chat=chat)
+    if settings.ollama_base_url.strip():
+        return await _call_ollama(messages, long_output=long_output, chat=chat)
+    raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, _NO_ENGINE_ERROR)
+
+
+def available_engine(*, allow_agent: bool) -> str | None:
+    """Motor que usaría _invoke_llm para este usuario, o None si no hay ninguno."""
+    if settings.cursor_agent_enabled and allow_agent and resolve_workspace_path(""):
+        return "cursor_agent"
+    if settings.deepseek_api_key.strip():
+        return "deepseek"
+    if settings.ollama_base_url.strip():
+        return "local"
+    return None
+
+
+@router.get("/status")
+async def ai_status(conn: DbConn, user: CurrentUser) -> dict[str, Any]:
+    """Permite a la UI saber si el asistente funcionará antes de enviar nada."""
+    engine = available_engine(allow_agent=await is_workspace_admin(conn, user))
+    return {
+        "available": engine is not None,
+        "engine": engine,
+        "message": None if engine else _NO_ENGINE_ERROR,
+    }
 
 
 async def _call_deepseek(
@@ -497,9 +541,14 @@ async def _call_deepseek(
         async with httpx.AsyncClient(timeout=timeout) as client:
             r = await client.post(url, json=payload, headers=headers)
     except httpx.RequestError as e:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"No se pudo conectar con DeepSeek: {e!s}") from e
+        logger.warning("DeepSeek: error de conexión: %s", e)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo conectar con el proveedor de IA") from e
     if r.status_code >= 400:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"DeepSeek ({r.status_code}): {r.text[:500]}")
+        logger.warning("DeepSeek (%s): %s", r.status_code, r.text[:500])
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"El proveedor de IA respondió con error ({r.status_code}); detalle en los logs del API",
+        )
     data = r.json()
     content = data["choices"][0]["message"]["content"]
     parsed = _parse_chat_json(content) if chat else _parse_tasks_json(content)
@@ -528,12 +577,14 @@ async def _call_ollama(
         async with httpx.AsyncClient(timeout=timeout) as client:
             r = await client.post(url, json=payload)
     except httpx.RequestError as e:
+        logger.warning("Ollama: error de conexión: %s", e)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo conectar con el modelo local (Ollama)") from e
+    if r.status_code >= 400:
+        logger.warning("Ollama (%s): %s", r.status_code, r.text[:500])
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,
-            f"No se pudo conectar con Ollama: {e!s}",
-        ) from e
-    if r.status_code >= 400:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Ollama: {r.status_code} {r.text[:500]}")
+            f"El modelo local respondió con error ({r.status_code}); detalle en los logs del API",
+        )
     data = r.json()
     content = data["choices"][0]["message"]["content"]
     parsed = _parse_chat_json(content) if chat else _parse_tasks_json(content)

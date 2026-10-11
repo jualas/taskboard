@@ -16,6 +16,9 @@ from .config import settings
 logger = logging.getLogger(__name__)
 
 
+_ROLE_LABEL_RE = re.compile(r"^\[(Sistema|Asistente|Usuario)\]", re.MULTILINE)
+
+
 def messages_to_prompt(messages: list[dict[str, str]]) -> str:
     """Convierte mensajes chat-style en un único prompt para el CLI."""
     parts: list[str] = []
@@ -24,6 +27,9 @@ def messages_to_prompt(messages: list[dict[str, str]]) -> str:
         content = (msg.get("content") or "").strip()
         if not content:
             continue
+        if role != "system":
+            # Un texto de usuario o del repo no puede abrir un bloque [Sistema] propio.
+            content = _ROLE_LABEL_RE.sub(r"[\1 (citado)]", content)
         if role == "system":
             parts.append(f"[Sistema]\n{content}")
         elif role == "assistant":
@@ -140,6 +146,34 @@ def _build_agent_cmd(
     return cmd
 
 
+_TOOL_DETAIL_KEYS = ("command", "path", "pattern", "globPattern", "query", "url", "searchTerm")
+_MAX_TOOL_DETAIL = 200
+
+
+def describe_tool_call(obj: dict[str, Any]) -> tuple[str, str]:
+    """Nombre y argumento principal de un evento tool_call del CLI.
+
+    El CLI emite `{"type": "tool_call", "tool_call": {"shellToolCall": {"args": {...}}}}`;
+    los formatos antiguos traían `tool_name` o `name`.
+    """
+    call = obj.get("tool_call")
+    if isinstance(call, dict):
+        for key, value in call.items():
+            if not key.endswith("ToolCall") or not isinstance(value, dict):
+                continue
+            name = key[: -len("ToolCall")] or key
+            args = value.get("args") if isinstance(value.get("args"), dict) else {}
+            for arg in _TOOL_DETAIL_KEYS:
+                detail = str(args.get(arg) or "").strip()
+                if detail:
+                    detail = " ".join(detail.split())
+                    if len(detail) > _MAX_TOOL_DETAIL:
+                        detail = detail[:_MAX_TOOL_DETAIL] + "…"
+                    return name, detail
+            return name, ""
+    return str(obj.get("tool_name") or obj.get("name") or "tool"), ""
+
+
 def parse_agent_stream_line(line: str) -> dict[str, Any] | None:
     """Convierte una línea NDJSON del CLI en evento simplificado para la UI."""
     line = line.strip()
@@ -166,8 +200,11 @@ def parse_agent_stream_line(line: str) -> dict[str, Any] | None:
             return {"kind": "text", "text": "".join(parts)}
         return None
     if kind == "tool_call" or kind == "tool":
-        name = obj.get("tool_name") or obj.get("name") or "tool"
-        return {"kind": "tool", "text": f"▸ {name}"}
+        if obj.get("subtype") == "completed":
+            return None  # ya se mostró al empezar (subtype started)
+        name, detail = describe_tool_call(obj)
+        text = f"▸ {name}: {detail}" if detail else f"▸ {name}"
+        return {"kind": "tool", "text": text, "tool": name}
     if kind == "result":
         return {
             "kind": "done",
