@@ -131,6 +131,7 @@ Si `tasks` es una lista, sustituye el borrador del panel de chat.
 - Con **DeepSeek**, el texto sale hacia **api.deepseek.com**; revisa su política si el contenido es sensible.
 - Con **Ollama**, el texto no sale del entorno acordado (mini PC local o servidor Ollama remoto en LAN).
 - Con **Cursor Agent**, el CLI accede al **filesystem del workspace** montado en el contenedor API; limita `WORKSPACE_ROOTS` y permisos de montaje.
+- **MCP del agente:** con `HOME` del usuario, el CLI lee `~/.cursor/mcp.json` y las aprobaciones guardadas en `~/.cursor/projects/*/mcp-approvals.json`, así que quitar `--approve-mcps` no basta. En producción se monta un `mcp.json` vacío y de solo lectura encima (`./agent-mcp.json:/home/jualas/.cursor/mcp.json:ro`) y `CURSOR_AGENT_APPROVE_MCPS=false`. Sin esto, una instrucción escondida en un repo que el agente lee (prompt injection indirecta) podría usar cualquier MCP del usuario. Comprobar con `docker exec -w <workspace> -e HOME=/home/jualas taskboard-api "$CURSOR_AGENT_BIN" mcp list`.
 
 ## 5) Infraestructura y operación
 

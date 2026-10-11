@@ -66,7 +66,8 @@ class Settings(BaseSettings):
     cursor_agent_mode: str = "ask"
     cursor_agent_timeout_sec: float = 300.0
     cursor_agent_timeout_plan_sec: float = 1200.0
-    cursor_agent_approve_mcps: bool = True
+    # Por defecto el agente no aprueba MCP solo: heredaría todos los MCP configurados por el usuario.
+    cursor_agent_approve_mcps: bool = False
     cursor_api_key: str = ""
     # Si false, no hace fallback a DeepSeek/Ollama cuando falla el CLI agent
     cursor_agent_fallback_llm: bool = False
