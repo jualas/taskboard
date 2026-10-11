@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 
 from .config import settings
+from .prompt_safety import DATA_NOTICE, new_boundary, wrap_untrusted
 from .cursor_agent import parse_llm_json, run_cursor_agent
 from .workspace import build_workspace_snapshot
 
@@ -173,7 +174,7 @@ async def _call_llm_for_suggestions(
     *,
     workspace_path: str = "",
 ) -> list[dict[str, Any]]:
-    prompt = f"{SYNC_SYSTEM_PROMPT}\n\n{user_content}"
+    prompt = f"{SYNC_SYSTEM_PROMPT}\n\n{DATA_NOTICE}\n\n{user_content}"
     path = (workspace_path or "").strip()
 
     if settings.cursor_agent_enabled and path:
@@ -185,7 +186,7 @@ async def _call_llm_for_suggestions(
             logger.warning("Cursor agent workspace suggestions falló: %s", e)
 
     messages = [
-        {"role": "system", "content": SYNC_SYSTEM_PROMPT},
+        {"role": "system", "content": f"{SYNC_SYSTEM_PROMPT}\n\n{DATA_NOTICE}"},
         {"role": "user", "content": user_content},
     ]
     try:
@@ -415,12 +416,19 @@ async def sync_project_workspace(conn, project_id: int) -> dict[str, Any]:
         )
         task_lines = "\n".join(f"- [{t['status']}] {t['title']}" for t in task_rows) or "(sin tareas)"
         prev_summary = (last["summary"] if last else "") or "(sin snapshot previo)"
-        user_content = (
-            f"Proyecto: {row['title']}\nEstado actual: {row['status']}\n"
-            f"Tareas en tablero:\n{task_lines}\n\n"
-            f"Resumen workspace anterior:\n{prev_summary}\n\n"
-            f"Resumen workspace nuevo:\n{snap.get('summary', '')}\n\n"
-            "Sugiere acciones concretas (máx. 2)."
+        boundary = new_boundary()
+        user_content = "\n\n".join(
+            [
+                wrap_untrusted(
+                    "Proyecto",
+                    f"Título: {row['title']}\nEstado actual: {row['status']}",
+                    boundary=boundary,
+                ),
+                wrap_untrusted("Tareas en tablero", task_lines, boundary=boundary),
+                wrap_untrusted("Resumen workspace anterior", prev_summary, boundary=boundary),
+                wrap_untrusted("Resumen workspace nuevo", snap.get("summary", ""), boundary=boundary),
+                "Sugiere acciones concretas (máx. 2).",
+            ]
         )
         ai_rows = await _call_llm_for_suggestions(user_content, workspace_path=path)
         for ai in ai_rows:

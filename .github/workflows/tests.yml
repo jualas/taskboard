@@ -1,0 +1,33 @@
+# Tests unitarios del backend (sin Postgres ni proveedores de IA reales).
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Instalar dependencias
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -q -r requirements.txt -r requirements-dev.txt
+      - name: pytest
+        run: .venv/bin/python -m pytest -q tests
