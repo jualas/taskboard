@@ -458,10 +458,13 @@ async def sync_project_workspace(conn, project_id: int) -> dict[str, Any]:
 
 
 async def sync_all_projects_with_workspace(conn) -> dict[str, Any]:
+    # Los proyectos completados o archivados están congelados: sin snapshots ni sugerencias
+    # automáticas (si no, cada commit genera tareas «Revisar cambios…» que nadie va a hacer).
     rows = await conn.fetch(
         """
         select id from projects
         where coalesce(trim(workspace_path), '') <> ''
+          and status not in ('completed', 'archived')
         order by id
         """
     )
