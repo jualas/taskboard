@@ -14,10 +14,17 @@ Servidor [Model Context Protocol](https://modelcontextprotocol.io) que expone la
 | `list_tasks` | Backlog / kanban de un proyecto |
 | `create_task` | Crear tarea |
 | `update_task_status` | Mover tarea en el flujo (`pending`, `in_progress`, `completed`) |
+| `get_task` | Detalle de una tarea con su checklist |
+| `update_task` | Cambiar título, descripción, estado, complejidad, etiquetas, fecha, horas o posición |
+| `add_subtasks` / `set_subtask_done` | Añadir elementos al checklist / marcarlos por posición |
+| `delete_task` | Borrar tarea (exige `confirm=true`) |
+| `create_project` / `update_project` | Crear proyecto / cambiar título, descripción o estado |
+| `board_summary` | Recuento por estado, tareas en curso y vencidas (un proyecto o todos) |
 | `get_workspace_snapshot` | Git + docker del workspace |
 | `list_workspace_suggestions` | Sugerencias automáticas (Fase 2) |
 | `sync_workspace` | Forzar sync snapshot |
 | `apply_workspace_suggestion` | Aplicar sugerencia |
+| `dismiss_workspace_suggestion` | Descartar sugerencia |
 | `export_taskboard_md` | Escribir `TASKBOARD.md` en el workspace (tareas + estados) |
 | `get_ide_development_prompt` | Plantilla de prompt Cursor rellenada por proyecto |
 | `prepare_ide_session` | Export + prompt en un paso (flujo IDE recomendado) |
@@ -60,6 +67,17 @@ chmod +x run-mcp-taskboard.sh
 ```
 
 Copia [`mcp-taskboard/mcp.json.example`](../mcp-taskboard/mcp.json.example) a `~/.cursor/mcp.json` (fusionando con servidores existentes).
+
+**Claude Code** (ámbito de usuario):
+
+```bash
+claude mcp add taskboard -s user \
+  -e TASKBOARD_ENV_FILE=/mnt/datos/docker/taskboard-api/.env \
+  -e TASKBOARD_API_URL=http://127.0.0.1:8101 \
+  -- /RUTA_ABSOLUTA/taskboard/mcp-taskboard/run-mcp-taskboard.sh
+```
+
+`TASKBOARD_API_URL` es necesaria en el mini PC: el API solo escucha en `127.0.0.1` y el `API_BASE_URL` del `.env` apunta a la IP de la LAN. Encima del MCP se usa el subagente `taskboard-pm` (`~/.claude/agents/taskboard-pm.md`, fuera del repo).
 
 **Variables de entorno del servidor MCP**
 
