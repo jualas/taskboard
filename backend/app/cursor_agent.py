@@ -333,6 +333,11 @@ async def stream_cursor_agent(
             detail = (err_b or b"").decode(errors="replace").strip() or f"exit {proc.returncode}"
             yield {"kind": "error", "text": detail[:800]}
     except asyncio.CancelledError:
-        proc.kill()
+        # El cliente cortó: matar el agente solo si sigue vivo (si no, ProcessLookupError)
+        if proc.returncode is None:
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
         await proc.wait()
         raise
