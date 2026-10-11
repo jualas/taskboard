@@ -140,6 +140,12 @@ async def get_task(task_id: int, conn: DbConn, user: CurrentUser) -> TaskIn:
 @router.put("", response_model=TaskIn)
 async def upsert_task(body: TaskIn, conn: DbConn, user: CurrentUser) -> TaskIn:
     await require_edit(conn, body.project_id, user)
+    # El upsert sobrescribe por id: si la tarea ya existe, también hace falta
+    # permiso sobre su proyecto actual (si no, se podría secuestrar una tarea ajena).
+    existing = await conn.fetchrow("select project_id from tasks where id = $1", body.id)
+    previous_project_id = int(existing["project_id"]) if existing else None
+    if previous_project_id is not None and previous_project_id != body.project_id:
+        await require_edit(conn, previous_project_id, user)
     row = await conn.fetchrow(
         """
         insert into tasks (
@@ -177,6 +183,8 @@ async def upsert_task(body: TaskIn, conn: DbConn, user: CurrentUser) -> TaskIn:
         body.updated_at,
     )
     await auto_export_if_enabled(conn, body.project_id)
+    if previous_project_id is not None and previous_project_id != body.project_id:
+        await auto_export_if_enabled(conn, previous_project_id)
     return TaskIn(**_row_to_task_dict(row))
 
 
