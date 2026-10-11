@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
 import os
 import re
+import time
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
@@ -85,6 +87,42 @@ def _agent_env() -> dict[str, str]:
     if api_key:
         env["CURSOR_API_KEY"] = api_key
     return env
+
+
+def _session_expired(margin_s: int = 60) -> bool:
+    """El modo --print no renueva la sesión de Cursor (auth.json); «status» sí, si ya ha caducado."""
+    if (settings.cursor_api_key or "").strip():
+        return False
+    env = _agent_env()
+    config_home = env.get("XDG_CONFIG_HOME") or f"{env.get('HOME', '')}/.config"
+    auth = Path(config_home) / "cursor" / "auth.json"
+    if not auth.is_file():
+        return False
+    try:
+        token = json.loads(auth.read_text(encoding="utf-8"))["accessToken"]
+        payload = token.split(".")[1]
+        exp = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))["exp"]
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        return True
+    return exp - time.time() < margin_s
+
+
+async def _ensure_session() -> None:
+    if not _session_expired():
+        return
+    proc = await asyncio.create_subprocess_exec(
+        _resolve_agent_bin(),
+        "status",
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+        env=_agent_env(),
+    )
+    try:
+        await asyncio.wait_for(proc.wait(), timeout=60)
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        logger.warning("Cursor agent: tiempo agotado al renovar la sesión")
 
 
 def _resolve_agent_bin() -> str:
@@ -256,6 +294,7 @@ async def run_cursor_agent(
     )
     logger.info("Cursor agent: %s (workspace=%s)", cmd[0], ws)
 
+    await _ensure_session()
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
@@ -334,6 +373,7 @@ async def stream_cursor_agent(
         (resume_session_id or "")[:8] or "-",
     )
 
+    await _ensure_session()
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
