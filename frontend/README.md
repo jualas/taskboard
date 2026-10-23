@@ -4,8 +4,16 @@ Aplicación Flutter para Web, Android y Escritorio. Este README está orientado 
 
 ---
 
+## Arquitectura
+
+El cliente Flutter sigue **Clean Architecture** (dominio, casos de uso, repositorios, BLoC, `get_it`). Guía completa, diagramas y plan de migración CA-0…CA-6:
+
+- [docs/architecture/clean-architecture.md](../docs/architecture/clean-architecture.md)
+
+Tests de reglas de dependencias: `flutter test test/architecture/dependency_rule_test.dart`
+
 ## Características
-- Arquitectura basada en BLoC y servicios.
+- Arquitectura basada en BLoC, casos de uso y repositorios.
 - Internacionalización (ES/EN).
 - Navegación con GoRouter y menú hamburguesa persistente.
 - UI responsive (Web/Escritorio/Móvil).

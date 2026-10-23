@@ -25,6 +25,10 @@ Gestor de proyectos y tareas (Kanban y lista) con un **asistente IA que planific
 
 *Capturas con datos de demostración, salvo las sugerencias, que son de producción.*
 
+## Arquitectura del cliente Flutter
+
+El frontend sigue **Clean Architecture** (dominio, casos de uso, repositorios, BLoC, `get_it`). Documentación: [docs/architecture/clean-architecture.md](docs/architecture/clean-architecture.md).
+
 ## De TFG a producto
 
 TaskBoard nació como mi **proyecto de fin de ciclo de DAM en el CIFP Carlos III de Cartagena**: un sistema de seguimiento de TFG para alumnos, tutores y centro, hecho con Flutter + Supabase ([proyecto_flutter_supabase](https://github.com/jualas/proyecto_flutter_supabase)).
