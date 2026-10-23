@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/models.dart';
-import 'taskboard_data_source.dart';
+import '../../models/models.dart';
+import '../../services/taskboard_data_source.dart';
 
 /// Servicio para la gestión del almacenamiento de datos en JSON.
 /// 

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../models/models.dart';
-import 'api/taskboard_api_client.dart';
+import '../core/network/taskboard_api_client.dart';
 
 class AiTaskSuggestion {
   final String title;
