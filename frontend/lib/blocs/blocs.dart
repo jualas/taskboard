@@ -1,4 +1,3 @@
-// Exportación de todos los BLoCs
 export 'auth_bloc.dart';
-export 'projects_bloc.dart';
-export 'tasks_bloc.dart';
+export '../features/projects/presentation/bloc/projects_bloc.dart';
+export '../features/tasks/presentation/bloc/tasks_bloc.dart';

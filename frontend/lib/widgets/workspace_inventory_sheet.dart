@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../blocs/projects_bloc.dart';
-import '../models/models.dart';
-import '../themes/app_theme.dart';
+import '../core/error/result_extensions.dart';
+import '../core/usecase/usecase.dart';
+import '../features/projects/domain/entities/project.dart';
+import '../features/projects/domain/entities/workspace.dart';
+import '../features/projects/domain/usecases/projects_usecases.dart';
+import '../features/projects/presentation/bloc/projects_bloc.dart';
+import '../shared/themes/app_theme.dart';
 import 'open_in_cursor_button.dart';
 
 Future<void> showWorkspaceInventorySheet(BuildContext context) {
@@ -49,15 +53,16 @@ class _WorkspaceInventoryPanelState extends State<_WorkspaceInventoryPanel> {
     });
     try {
       final bloc = context.read<ProjectsBloc>();
-      final service = bloc.projectsService;
-      final results = await Future.wait([
-        service.getWorkspaceInventory(),
-        service.getProjects(),
-      ]);
+      final inv = await bloc
+          .getWorkspaceInventory(const NoParams())
+          .then((r) => r.require('Inventario'));
+      final projects = await bloc
+          .getProjects(const NoParams())
+          .then((r) => r.require('Proyectos'));
       if (!mounted) return;
       setState(() {
-        _inventory = results[0] as WorkspaceInventory;
-        _projects = results[1] as List<Project>;
+        _inventory = inv;
+        _projects = projects;
         _loading = false;
       });
     } catch (e) {
@@ -85,11 +90,15 @@ class _WorkspaceInventoryPanelState extends State<_WorkspaceInventoryPanel> {
   Future<void> _createProjectFor(WorkspaceInventoryEntry entry) async {
     setState(() => _busyPathHash = entry.path.hashCode);
     try {
-      final service = context.read<ProjectsBloc>().projectsService;
-      await service.createProject(
-        title: _humanizeName(entry.name),
-        workspacePath: entry.path,
-      );
+      final bloc = context.read<ProjectsBloc>();
+      await bloc
+          .createProject(
+            CreateProjectParams(
+              title: _humanizeName(entry.name),
+              workspacePath: entry.path,
+            ),
+          )
+          .then((r) => r.require('Crear proyecto'));
       context.read<ProjectsBloc>().add(ProjectsLoadRequested());
       await _load();
       if (!mounted) return;
@@ -115,10 +124,15 @@ class _WorkspaceInventoryPanelState extends State<_WorkspaceInventoryPanel> {
   ) async {
     setState(() => _busyPathHash = entry.path.hashCode);
     try {
-      final service = context.read<ProjectsBloc>().projectsService;
-      await service.updateProject(
-        project.copyWith(workspacePath: entry.path, updatedAt: DateTime.now()),
-      );
+      final bloc = context.read<ProjectsBloc>();
+      await bloc
+          .updateProject(
+            project.copyWith(
+              workspacePath: entry.path,
+              updatedAt: DateTime.now(),
+            ),
+          )
+          .then((r) => r.require('Vincular proyecto'));
       context.read<ProjectsBloc>().add(ProjectsLoadRequested());
       await _load();
       if (!mounted) return;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../blocs/projects_bloc.dart';
-import '../themes/app_theme.dart';
+import '../blocs/blocs.dart';
+import '../shared/themes/app_theme.dart';
 
 /// Título de AppBar con nombre del proyecto y etiqueta de la vista (Kanban, lista…).
 class ProjectScreenTitle extends StatefulWidget {
@@ -48,7 +48,8 @@ class _ProjectScreenTitleState extends State<ProjectScreenTitle> {
       bloc.add(ProjectsLoadRequested());
     }
 
-    bloc.projectsService.getProject(widget.projectId).then((project) {
+    bloc.getProject(widget.projectId).then((result) {
+      final project = result.valueOrNull;
       if (mounted && project != null) {
         setState(() => _projectTitle = project.title);
       }

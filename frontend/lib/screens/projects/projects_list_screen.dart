@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../blocs/blocs.dart';
-import '../../models/models.dart';
+import '../../core/error/result_extensions.dart';
+import '../../core/usecase/usecase.dart';
+import '../../features/projects/domain/entities/project.dart';
+import '../../features/projects/domain/entities/project_member.dart';
+import '../../features/projects/domain/entities/workspace.dart';
+import '../../features/projects/domain/usecases/projects_usecases.dart';
 import '../../services/ai_assistant_service.dart';
-import '../../themes/app_theme.dart';
+import '../../shared/themes/app_theme.dart';
 import '../../widgets/workspace_suggestions_sheet.dart';
 import '../../widgets/workspace_inventory_sheet.dart';
 import '../../widgets/open_in_cursor_button.dart';
@@ -598,14 +603,14 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
       case 'export_md':
         exportTaskboardMdAction(
           context,
-          projectsService: context.read<ProjectsBloc>().projectsService,
+          exportTaskboardMd: context.read<ProjectsBloc>().exportTaskboardMd,
           project: project,
         );
         break;
       case 'ide_session':
         showIdeCursorSessionSheet(
           context,
-          projectsService: context.read<ProjectsBloc>().projectsService,
+          prepareIdeSession: context.read<ProjectsBloc>().prepareIdeSession,
           project: project,
         );
         break;
@@ -696,8 +701,8 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
       try {
         final snapshot = await context
             .read<ProjectsBloc>()
-            .projectsService
-            .previewWorkspaceSnapshot(path);
+            .previewWorkspaceSnapshot(path)
+            .then((r) => r.require('Vista previa workspace'));
         final summary = (snapshot['summary'] ?? '').toString().trim();
         if (!context.mounted) return;
         setDialogState(() {
@@ -880,7 +885,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
 
   Future<void> _showShareProjectDialog(Project project) async {
     ProjectMemberRole selectedRole = ProjectMemberRole.viewer;
-    final projectsService = context.read<ProjectsBloc>().projectsService;
+    final projectsBloc = context.read<ProjectsBloc>();
     List<ProjectMember> members = [];
     List<AppUser> users = [];
     String? selectedUserId;
@@ -898,15 +903,21 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
     }
 
     Future<void> reloadMembers(StateSetter setStateModal) async {
-      final loadedMembers = await projectsService.getProjectMembers(project.id);
+      final loadedMembers = await projectsBloc
+          .getProjectMembers(project.id)
+          .then((r) => r.require('Miembros'));
       setStateModal(() {
         members = loadedMembers;
       });
     }
 
     try {
-      members = await projectsService.getProjectMembers(project.id);
-      users = await projectsService.getRegisteredUsers();
+      members = await projectsBloc
+          .getProjectMembers(project.id)
+          .then((r) => r.require('Miembros'));
+      users = await projectsBloc
+          .getRegisteredUsers(const NoParams())
+          .then((r) => r.require('Usuarios'));
     } catch (_) {
       // La UI ya muestra errores en operaciones; aquí evitamos bloquear el modal.
     }
@@ -945,11 +956,15 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                                         _isUpdatingMembers = true;
                                       });
                                       try {
-                                        await projectsService.updateMemberRole(
-                                          projectId: project.id,
-                                          userId: member.userId,
-                                          role: role,
-                                        );
+                                        await projectsBloc
+                                            .updateProjectMemberRole(
+                                              MemberChangeParams(
+                                                projectId: project.id,
+                                                userId: member.userId,
+                                                role: role,
+                                              ),
+                                            )
+                                            .then((r) => r.require('Rol'));
                                         await reloadMembers(setStateModal);
                                       } finally {
                                         if (mounted) {
@@ -978,10 +993,14 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                                           _isUpdatingMembers = true;
                                         });
                                         try {
-                                          await projectsService.removeMember(
-                                            projectId: project.id,
-                                            userId: member.userId,
-                                          );
+                                          await projectsBloc
+                                              .removeProjectMember(
+                                                MemberRemoveParams(
+                                                  projectId: project.id,
+                                                  userId: member.userId,
+                                                ),
+                                              )
+                                              .then((r) => r.require('Quitar'));
                                           await reloadMembers(setStateModal);
                                         } finally {
                                           if (mounted) {
@@ -1065,11 +1084,15 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                         _isUpdatingMembers = true;
                       });
                       try {
-                        await projectsService.addMember(
-                          projectId: project.id,
-                          userId: userId,
-                          role: selectedRole,
-                        );
+                        await projectsBloc
+                            .addProjectMember(
+                              MemberChangeParams(
+                                projectId: project.id,
+                                userId: userId,
+                                role: selectedRole,
+                              ),
+                            )
+                            .then((r) => r.require('Compartir'));
                         selectedUserId = null;
                         await reloadMembers(setStateModal);
                       } catch (e) {

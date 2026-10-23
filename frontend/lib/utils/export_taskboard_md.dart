@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../models/models.dart';
-import '../services/projects_service.dart';
-import '../themes/app_theme.dart';
-import '../ui/root_scaffold_messenger.dart';
+import '../core/error/result_extensions.dart';
+import '../features/projects/domain/entities/project.dart';
+import '../features/projects/domain/usecases/projects_usecases.dart';
+import '../shared/themes/app_theme.dart';
+import '../shared/ui/root_scaffold_messenger.dart';
 
 /// Exporta TASKBOARD.md al workspace del proyecto (API remota).
 Future<void> exportTaskboardMdAction(
   BuildContext context, {
-  required ProjectsService projectsService,
+  required ExportTaskboardMd exportTaskboardMd,
   required Project project,
 }) async {
   if (project.workspacePath.isEmpty) {
@@ -29,7 +30,9 @@ Future<void> exportTaskboardMdAction(
   );
 
   try {
-    final result = await projectsService.exportTaskboardMd(project.id);
+    final result = await exportTaskboardMd(
+      ExportTaskboardMdParams(projectId: project.id),
+    ).then((r) => r.require('Exportar TASKBOARD.md'));
     if (!context.mounted) return;
     final path = (result['file_path'] ?? result['filePath'] ?? '').toString();
     final count = result['task_count'] ?? result['taskCount'] ?? '?';
@@ -48,9 +51,8 @@ Future<void> exportTaskboardMdAction(
     if (!context.mounted) return;
     kRootScaffoldMessenger.currentState?.showSnackBar(
       SnackBar(
-        content: Text('No se pudo exportar: $e'),
+        content: Text('Error al exportar: $e'),
         backgroundColor: AppColors.error,
-        duration: const Duration(seconds: 8),
       ),
     );
   }

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../models/models.dart';
-import '../services/projects_service.dart';
-import '../themes/app_theme.dart';
-import '../ui/root_scaffold_messenger.dart';
+import '../core/error/result_extensions.dart';
+import '../features/projects/domain/entities/project.dart';
+import '../features/projects/domain/entities/workspace.dart';
+import '../features/projects/domain/usecases/projects_usecases.dart';
+import '../shared/themes/app_theme.dart';
+import '../shared/ui/root_scaffold_messenger.dart';
 import 'open_in_cursor_button.dart';
 
 /// Prepara TASKBOARD.md + plantilla de prompt y la muestra para copiar al IDE.
 Future<void> showIdeCursorSessionSheet(
   BuildContext context, {
-  required ProjectsService projectsService,
+  required PrepareIdeSession prepareIdeSession,
   required Project project,
   int? focusTaskId,
 }) async {
@@ -29,7 +31,7 @@ Future<void> showIdeCursorSessionSheet(
     isScrollControlled: true,
     useSafeArea: true,
     builder: (ctx) => _IdeCursorSessionSheet(
-      projectsService: projectsService,
+      prepareIdeSession: prepareIdeSession,
       project: project,
       focusTaskId: focusTaskId,
     ),
@@ -38,12 +40,12 @@ Future<void> showIdeCursorSessionSheet(
 
 class _IdeCursorSessionSheet extends StatefulWidget {
   const _IdeCursorSessionSheet({
-    required this.projectsService,
+    required this.prepareIdeSession,
     required this.project,
     this.focusTaskId,
   });
 
-  final ProjectsService projectsService;
+  final PrepareIdeSession prepareIdeSession;
   final Project project;
   final int? focusTaskId;
 
@@ -68,10 +70,12 @@ class _IdeCursorSessionSheetState extends State<_IdeCursorSessionSheet> {
       _error = null;
     });
     try {
-      final p = await widget.projectsService.prepareIdeSession(
-        widget.project.id,
-        focusTaskId: widget.focusTaskId,
-      );
+      final p = await widget.prepareIdeSession(
+        PrepareIdeSessionParams(
+          projectId: widget.project.id,
+          focusTaskId: widget.focusTaskId,
+        ),
+      ).then((r) => r.require('Sesión IDE'));
       if (!mounted) return;
       setState(() {
         _prompt = p;

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../blocs/projects_bloc.dart';
-import '../blocs/tasks_bloc.dart';
-import '../models/models.dart';
-import '../themes/app_theme.dart';
+import '../core/error/result_extensions.dart';
+import '../features/projects/domain/entities/project.dart';
+import '../features/projects/domain/entities/workspace.dart';
+import '../features/projects/domain/usecases/projects_usecases.dart';
+import '../features/projects/presentation/bloc/projects_bloc.dart';
+import '../features/tasks/presentation/bloc/tasks_bloc.dart';
+import '../shared/themes/app_theme.dart';
 import 'open_in_cursor_button.dart';
 
 Future<void> showWorkspaceSuggestionsSheet(
@@ -51,8 +54,12 @@ class _WorkspaceSuggestionsPanelState extends State<_WorkspaceSuggestionsPanel> 
       _error = null;
     });
     try {
-      final service = context.read<ProjectsBloc>().projectsService;
-      final items = await service.getWorkspaceSuggestions(widget.project.id);
+      final bloc = context.read<ProjectsBloc>();
+      final items = await bloc
+          .getWorkspaceSuggestions(
+            WorkspaceSuggestionsParams(widget.project.id),
+          )
+          .then((r) => r.require('Sugerencias'));
       if (!mounted) return;
       setState(() {
         _suggestions = items;
@@ -70,8 +77,10 @@ class _WorkspaceSuggestionsPanelState extends State<_WorkspaceSuggestionsPanel> 
   Future<void> _syncNow() async {
     setState(() => _syncing = true);
     try {
-      final service = context.read<ProjectsBloc>().projectsService;
-      await service.syncProjectWorkspace(widget.project.id);
+      final bloc = context.read<ProjectsBloc>();
+      await bloc
+          .syncProjectWorkspace(widget.project.id)
+          .then((r) => r.require('Sincronizar workspace'));
       context.read<ProjectsBloc>().add(ProjectsLoadRequested());
       await _load();
       if (!mounted) return;
@@ -91,8 +100,15 @@ class _WorkspaceSuggestionsPanelState extends State<_WorkspaceSuggestionsPanel> 
   Future<void> _apply(WorkspaceSuggestion s) async {
     setState(() => _busyId = s.id);
     try {
-      final service = context.read<ProjectsBloc>().projectsService;
-      await service.applyWorkspaceSuggestion(widget.project.id, s.id);
+      final bloc = context.read<ProjectsBloc>();
+      await bloc
+          .applyWorkspaceSuggestion(
+            SuggestionActionParams(
+              projectId: widget.project.id,
+              suggestionId: s.id,
+            ),
+          )
+          .then((r) => r.require('Aplicar sugerencia'));
       context.read<ProjectsBloc>().add(ProjectsLoadRequested());
       if (s.isTask) {
         try {
@@ -119,8 +135,15 @@ class _WorkspaceSuggestionsPanelState extends State<_WorkspaceSuggestionsPanel> 
   Future<void> _dismiss(WorkspaceSuggestion s) async {
     setState(() => _busyId = s.id);
     try {
-      final service = context.read<ProjectsBloc>().projectsService;
-      await service.dismissWorkspaceSuggestion(widget.project.id, s.id);
+      final bloc = context.read<ProjectsBloc>();
+      await bloc
+          .dismissWorkspaceSuggestion(
+            SuggestionActionParams(
+              projectId: widget.project.id,
+              suggestionId: s.id,
+            ),
+          )
+          .then((r) => r.require('Descartar sugerencia'));
       context.read<ProjectsBloc>().add(ProjectsLoadRequested());
       await _load();
     } catch (e) {
