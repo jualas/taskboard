@@ -1,9 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../models/models.dart';
+import '../../features/tasks/domain/entities/task.dart';
+import '../../utils/ai_task_conversion.dart';
 import '../../services/services.dart';
-import '../../themes/app_theme.dart';
-import '../../ui/root_scaffold_messenger.dart';
+import '../../shared/themes/app_theme.dart';
+import '../../shared/ui/root_scaffold_messenger.dart';
 
 class TaskForm extends StatefulWidget {
   final int projectId;
@@ -467,7 +468,7 @@ class _TaskFormState extends State<TaskForm> {
       setState(() {
         _titleController.text = suggestion.title;
         _descriptionController.text = suggestion.description;
-        _complexity = suggestion.complexity;
+        _complexity = domainComplexityFromLegacy(suggestion.complexity);
         _estimatedHoursController.text =
             suggestion.estimatedHours?.toString() ?? '';
         _tagsController.text = suggestion.tags.join(', ');

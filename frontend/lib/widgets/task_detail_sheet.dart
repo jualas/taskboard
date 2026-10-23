@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/models.dart';
-import '../themes/app_theme.dart';
+import '../features/tasks/domain/entities/task.dart';
+import '../shared/themes/app_theme.dart';
 
 /// Muestra descripción completa, checklist interactivo, etiquetas y metadatos.
 Future<void> showTaskDetailSheet(

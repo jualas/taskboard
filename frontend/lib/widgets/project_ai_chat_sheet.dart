@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../blocs/tasks_bloc.dart';
-import '../models/models.dart';
+import '../core/di/injection.dart';
+import '../features/tasks/domain/entities/task.dart';
+import '../features/tasks/domain/usecases/tasks_usecases.dart';
+import '../features/tasks/presentation/bloc/tasks_bloc.dart';
 import 'project_ai_chat_panel.dart';
 
 /// Abre el asistente IA como hoja modal para un proyecto ya creado.
@@ -35,7 +37,7 @@ Future<void> showProjectAiChatSheet(
             projectTitle: projectTitle,
             projectDescription: projectDescription,
             existingTasks: existingTasks,
-            tasksService: tasksBloc.tasksService,
+            createTask: sl<CreateTask>(),
             onTasksApplied: () {
               tasksBloc.add(TasksLoadRequested(projectId: projectId));
             },

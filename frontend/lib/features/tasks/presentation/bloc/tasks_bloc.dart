@@ -1,9 +1,10 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../models/models.dart';
-import '../services/tasks_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-// Events
+import '../../../../core/error/result.dart';
+import '../../domain/entities/task.dart';
+import '../../domain/usecases/tasks_usecases.dart';
+
 abstract class TasksEvent extends Equatable {
   const TasksEvent();
 
@@ -12,24 +13,15 @@ abstract class TasksEvent extends Equatable {
 }
 
 class TasksLoadRequested extends TasksEvent {
-  final int projectId;
-
   const TasksLoadRequested({required this.projectId});
+
+  final int projectId;
 
   @override
   List<Object> get props => [projectId];
 }
 
 class TaskCreateRequested extends TasksEvent {
-  final int projectId;
-  final String title;
-  final String description;
-  final TaskComplexity complexity;
-  final int? estimatedHours;
-  final DateTime? dueDate;
-  final List<String> tags;
-  final List<Subtask> subtasks;
-
   const TaskCreateRequested({
     required this.projectId,
     required this.title,
@@ -40,6 +32,15 @@ class TaskCreateRequested extends TasksEvent {
     this.tags = const [],
     this.subtasks = const [],
   });
+
+  final int projectId;
+  final String title;
+  final String description;
+  final TaskComplexity complexity;
+  final int? estimatedHours;
+  final DateTime? dueDate;
+  final List<String> tags;
+  final List<Subtask> subtasks;
 
   @override
   List<Object?> get props => [
@@ -55,55 +56,49 @@ class TaskCreateRequested extends TasksEvent {
 }
 
 class TaskUpdateRequested extends TasksEvent {
-  final Task task;
-
   const TaskUpdateRequested(this.task);
+
+  final Task task;
 
   @override
   List<Object> get props => [task];
 }
 
-/// Guarda checklist (subtareas) u otros cambios sin pantalla de carga ni snackbar de éxito.
 class TaskChecklistPersistRequested extends TasksEvent {
-  final Task task;
-
   const TaskChecklistPersistRequested(this.task);
+
+  final Task task;
 
   @override
   List<Object> get props => [task];
 }
 
 class TaskDeleteRequested extends TasksEvent {
+  const TaskDeleteRequested({required this.id, required this.projectId});
+
   final int id;
   final int projectId;
-
-  const TaskDeleteRequested({required this.id, required this.projectId});
 
   @override
   List<Object> get props => [id, projectId];
 }
 
 class TaskStatusUpdateRequested extends TasksEvent {
-  final int taskId;
-  final TaskStatus status;
-  final int projectId;
-
   const TaskStatusUpdateRequested({
     required this.taskId,
     required this.status,
     required this.projectId,
   });
 
+  final int taskId;
+  final TaskStatus status;
+  final int projectId;
+
   @override
   List<Object> get props => [taskId, status, projectId];
 }
 
 class TaskReorderRequested extends TasksEvent {
-  final int taskId;
-  final TaskStatus newStatus;
-  final int targetIndex;
-  final int projectId;
-
   const TaskReorderRequested({
     required this.taskId,
     required this.newStatus,
@@ -111,11 +106,15 @@ class TaskReorderRequested extends TasksEvent {
     required this.projectId,
   });
 
+  final int taskId;
+  final TaskStatus newStatus;
+  final int targetIndex;
+  final int projectId;
+
   @override
   List<Object> get props => [taskId, newStatus, targetIndex, projectId];
 }
 
-// States
 abstract class TasksState extends Equatable {
   const TasksState();
 
@@ -128,39 +127,48 @@ class TasksInitial extends TasksState {}
 class TasksLoading extends TasksState {}
 
 class TasksLoaded extends TasksState {
+  const TasksLoaded({required this.tasks, required this.projectId});
+
   final List<Task> tasks;
   final int projectId;
-
-  const TasksLoaded({required this.tasks, required this.projectId});
 
   @override
   List<Object> get props => [tasks, projectId];
 }
 
 class TasksFailure extends TasksState {
-  final String message;
-
   const TasksFailure(this.message);
+
+  final String message;
 
   @override
   List<Object> get props => [message];
 }
 
 class TaskOperationSuccess extends TasksState {
-  final String message;
-
   const TaskOperationSuccess(this.message);
+
+  final String message;
 
   @override
   List<Object> get props => [message];
 }
 
-// BLoC
 class TasksBloc extends Bloc<TasksEvent, TasksState> {
-  final TasksService tasksService;
-  int? _currentProjectId;
-
-  TasksBloc({required this.tasksService}) : super(TasksInitial()) {
+  TasksBloc({
+    required GetTasksByProject getTasksByProject,
+    required CreateTask createTask,
+    required UpdateTask updateTask,
+    required DeleteTask deleteTask,
+    required UpdateTaskStatus updateTaskStatus,
+    required MoveTask moveTask,
+  })  : _getTasksByProject = getTasksByProject,
+        _createTask = createTask,
+        _updateTask = updateTask,
+        _deleteTask = deleteTask,
+        _updateTaskStatus = updateTaskStatus,
+        _moveTask = moveTask,
+        super(TasksInitial()) {
     on<TasksLoadRequested>(_onTasksLoadRequested);
     on<TaskCreateRequested>(_onTaskCreateRequested);
     on<TaskUpdateRequested>(_onTaskUpdateRequested);
@@ -170,19 +178,33 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     on<TaskReorderRequested>(_onTaskReorderRequested);
   }
 
+  final GetTasksByProject _getTasksByProject;
+  final CreateTask _createTask;
+  final UpdateTask _updateTask;
+  final DeleteTask _deleteTask;
+  final UpdateTaskStatus _updateTaskStatus;
+  final MoveTask _moveTask;
+
+  int? _currentProjectId;
+
+  String _failureMessage(Result<dynamic> result, String prefix) {
+    return '$prefix: ${result.failureOrNull?.message ?? 'error desconocido'}';
+  }
+
   Future<void> _onTasksLoadRequested(
     TasksLoadRequested event,
     Emitter<TasksState> emit,
   ) async {
     _currentProjectId = event.projectId;
     emit(TasksLoading());
-    
-    try {
-      final tasks = await tasksService.getTasksByProject(event.projectId);
-      emit(TasksLoaded(tasks: tasks, projectId: event.projectId));
-    } catch (e) {
-      emit(TasksFailure('Error al cargar tareas: ${e.toString()}'));
-    }
+
+    final result =
+        await _getTasksByProject(GetTasksByProjectParams(event.projectId));
+    result.when(
+      success: (tasks) =>
+          emit(TasksLoaded(tasks: tasks, projectId: event.projectId)),
+      onFailure: (f) => emit(TasksFailure('Error al cargar tareas: ${f.message}')),
+    );
   }
 
   Future<void> _onTaskCreateRequested(
@@ -190,9 +212,9 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     Emitter<TasksState> emit,
   ) async {
     emit(TasksLoading());
-    
-    try {
-      await tasksService.createTask(
+
+    final result = await _createTask(
+      CreateTaskParams(
         projectId: event.projectId,
         title: event.title,
         description: event.description,
@@ -201,13 +223,15 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
         dueDate: event.dueDate,
         tags: event.tags,
         subtasks: event.subtasks,
-      );
-      
-      emit(const TaskOperationSuccess('Tarea creada correctamente'));
-      add(TasksLoadRequested(projectId: event.projectId));
-    } catch (e) {
-      emit(TasksFailure('Error al crear tarea: ${e.toString()}'));
+      ),
+    );
+
+    if (result.isFailure) {
+      emit(TasksFailure(_failureMessage(result, 'Error al crear tarea')));
+      return;
     }
+    emit(const TaskOperationSuccess('Tarea creada correctamente'));
+    add(TasksLoadRequested(projectId: event.projectId));
   }
 
   Future<void> _onTaskUpdateRequested(
@@ -215,16 +239,15 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     Emitter<TasksState> emit,
   ) async {
     emit(TasksLoading());
-    
-    try {
-      await tasksService.updateTask(event.task);
-      
-      emit(const TaskOperationSuccess('Tarea actualizada correctamente'));
-      if (_currentProjectId != null) {
-        add(TasksLoadRequested(projectId: _currentProjectId!));
-      }
-    } catch (e) {
-      emit(TasksFailure('Error al actualizar tarea: ${e.toString()}'));
+
+    final result = await _updateTask(event.task);
+    if (result.isFailure) {
+      emit(TasksFailure(_failureMessage(result, 'Error al actualizar tarea')));
+      return;
+    }
+    emit(const TaskOperationSuccess('Tarea actualizada correctamente'));
+    if (_currentProjectId != null) {
+      add(TasksLoadRequested(projectId: _currentProjectId!));
     }
   }
 
@@ -234,24 +257,26 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
   ) async {
     final task = event.task;
     final projectId = task.projectId;
-    // No abortar si el estado es TaskOperationSuccess / TasksLoading / etc.:
-    // antes se descartaba el evento y el checklist parecía no persistir nunca.
     if (_currentProjectId != null && _currentProjectId != projectId) {
       return;
     }
 
-    try {
-      final saved = await tasksService.updateTask(task);
-      final s = state;
-      if (s is TasksLoaded && s.projectId == projectId) {
-        final newTasks =
-            s.tasks.map((t) => t.id == saved.id ? saved : t).toList();
-        emit(TasksLoaded(tasks: newTasks, projectId: s.projectId));
-      } else {
-        add(TasksLoadRequested(projectId: projectId));
-      }
-    } catch (e) {
-      emit(TasksFailure('No se pudo guardar el checklist: ${e.toString()}'));
+    final result = await _updateTask(task);
+    if (result.isFailure) {
+      emit(TasksFailure(
+        _failureMessage(result, 'No se pudo guardar el checklist'),
+      ));
+      add(TasksLoadRequested(projectId: projectId));
+      return;
+    }
+
+    final saved = result.valueOrNull!;
+    final s = state;
+    if (s is TasksLoaded && s.projectId == projectId) {
+      final newTasks =
+          s.tasks.map((t) => t.id == saved.id ? saved : t).toList();
+      emit(TasksLoaded(tasks: newTasks, projectId: s.projectId));
+    } else {
       add(TasksLoadRequested(projectId: projectId));
     }
   }
@@ -261,15 +286,14 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     Emitter<TasksState> emit,
   ) async {
     emit(TasksLoading());
-    
-    try {
-      await tasksService.deleteTask(event.id);
-      
-      emit(const TaskOperationSuccess('Tarea eliminada correctamente'));
-      add(TasksLoadRequested(projectId: event.projectId));
-    } catch (e) {
-      emit(TasksFailure('Error al eliminar tarea: ${e.toString()}'));
+
+    final result = await _deleteTask(DeleteTaskParams(event.id));
+    if (result.isFailure) {
+      emit(TasksFailure(_failureMessage(result, 'Error al eliminar tarea')));
+      return;
     }
+    emit(const TaskOperationSuccess('Tarea eliminada correctamente'));
+    add(TasksLoadRequested(projectId: event.projectId));
   }
 
   Future<void> _onTaskStatusUpdateRequested(
@@ -277,44 +301,44 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     Emitter<TasksState> emit,
   ) async {
     emit(TasksLoading());
-    
-    try {
-      await tasksService.updateTaskStatus(event.taskId, event.status);
-      
-      emit(const TaskOperationSuccess('Estado actualizado'));
-      add(TasksLoadRequested(projectId: event.projectId));
-    } catch (e) {
-      emit(TasksFailure('Error al actualizar estado: ${e.toString()}'));
+
+    final result = await _updateTaskStatus(
+      UpdateTaskStatusParams(taskId: event.taskId, status: event.status),
+    );
+    if (result.isFailure) {
+      emit(TasksFailure(_failureMessage(result, 'Error al actualizar estado')));
+      return;
     }
+    emit(const TaskOperationSuccess('Estado actualizado'));
+    add(TasksLoadRequested(projectId: event.projectId));
   }
 
   Future<void> _onTaskReorderRequested(
     TaskReorderRequested event,
     Emitter<TasksState> emit,
   ) async {
-    // Actualización optimista - obtener estado actual
     final currentState = state;
     List<Task> originalTasks = [];
-    
+
     if (currentState is TasksLoaded) {
       originalTasks = List.from(currentState.tasks);
     }
-    
-    try {
-      await tasksService.moveTask(
+
+    final result = await _moveTask(
+      MoveTaskParams(
         taskId: event.taskId,
         newStatus: event.newStatus,
         targetIndex: event.targetIndex,
-      );
-      
-      // Recargar tareas
-      add(TasksLoadRequested(projectId: event.projectId));
-    } catch (e) {
-      // Restaurar estado original en caso de error
+      ),
+    );
+
+    if (result.isFailure) {
       if (originalTasks.isNotEmpty) {
         emit(TasksLoaded(tasks: originalTasks, projectId: event.projectId));
       }
-      emit(TasksFailure('Error al mover tarea: ${e.toString()}'));
+      emit(TasksFailure(_failureMessage(result, 'Error al mover tarea')));
+      return;
     }
+    add(TasksLoadRequested(projectId: event.projectId));
   }
 }
