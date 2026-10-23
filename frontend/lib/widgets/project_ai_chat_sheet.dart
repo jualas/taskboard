@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../core/di/injection.dart';
 import '../features/tasks/domain/entities/task.dart';
-import '../features/tasks/domain/usecases/tasks_usecases.dart';
 import '../features/tasks/presentation/bloc/tasks_bloc.dart';
 import 'project_ai_chat_panel.dart';
 
@@ -37,7 +35,7 @@ Future<void> showProjectAiChatSheet(
             projectTitle: projectTitle,
             projectDescription: projectDescription,
             existingTasks: existingTasks,
-            createTask: sl<CreateTask>(),
+            createTask: tasksBloc.createTask,
             onTasksApplied: () {
               tasksBloc.add(TasksLoadRequested(projectId: projectId));
             },

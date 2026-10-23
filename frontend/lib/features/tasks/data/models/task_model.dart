@@ -143,7 +143,7 @@ class TaskModel {
         complexity: task.complexity,
         tags: List<String>.from(task.tags),
         subtasks:
-            task.subtasks.map((s) => SubtaskModel.fromEntity(s)).toList(),
+            task.subtasks.map(SubtaskModel.fromEntity).toList(),
         createdAt: task.createdAt,
         updatedAt: task.updatedAt,
       );

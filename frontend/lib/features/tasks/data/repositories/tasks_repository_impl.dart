@@ -15,9 +15,7 @@ class TasksRepositoryImpl implements TasksRepository {
   Future<Result<List<Task>>> getTasksByProject(int projectId) async {
     try {
       final models = await _remote.getTasksByProject(projectId);
-      final tasks = models.map((m) => m.toEntity()).toList()
-        ..sort((a, b) => a.kanbanPosition.compareTo(b.kanbanPosition));
-      return Success(tasks);
+      return Success(models.map((m) => m.toEntity()).toList());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -149,7 +147,7 @@ class TasksRepositoryImpl implements TasksRepository {
       final targetColumnTasks = projectTasks
           .where((t) => t.status == newStatus && t.id != taskId)
           .toList()
-        ..sort((a, b) => a.kanbanPosition.compareTo(b.kanbanPosition));
+        ..sort(compareTasksByKanbanPosition);
 
       double newPosition;
       if (targetColumnTasks.isEmpty) {

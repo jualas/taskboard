@@ -43,7 +43,7 @@ Failure mapExceptionToFailure(Object error) {
   return UnexpectedFailure(text);
 }
 
-/// Convierte errores genéricos de [TaskboardDataSource] / HTTP legacy.
+/// Convierte errores genéricos del data source HTTP legacy.
 Never rethrowAsAppException(Object error, {String? context}) {
   if (error is AppException) throw error;
   final text = error.toString();

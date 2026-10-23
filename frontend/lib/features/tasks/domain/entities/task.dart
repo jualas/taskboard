@@ -143,6 +143,9 @@ class Task extends Equatable {
       ];
 }
 
+int compareTasksByKanbanPosition(Task a, Task b) =>
+    a.kanbanPosition.compareTo(b.kanbanPosition);
+
 extension TaskStatusX on TaskStatus {
   bool get isCompleted => this == TaskStatus.completed;
   bool get isInProgress => this == TaskStatus.inProgress;

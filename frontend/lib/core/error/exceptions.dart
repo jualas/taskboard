@@ -1,4 +1,4 @@
-/// Excepciones lanzadas en la capa data (traducidas a [Failure] en repositorios).
+/// Excepciones lanzadas en la capa data (traducidas a Failure en repositorios).
 sealed class AppException implements Exception {
   const AppException(this.message);
 

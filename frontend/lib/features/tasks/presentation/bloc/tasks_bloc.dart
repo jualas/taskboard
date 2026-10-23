@@ -157,13 +157,12 @@ class TaskOperationSuccess extends TasksState {
 class TasksBloc extends Bloc<TasksEvent, TasksState> {
   TasksBloc({
     required GetTasksByProject getTasksByProject,
-    required CreateTask createTask,
+    required this.createTask,
     required UpdateTask updateTask,
     required DeleteTask deleteTask,
     required UpdateTaskStatus updateTaskStatus,
     required MoveTask moveTask,
   })  : _getTasksByProject = getTasksByProject,
-        _createTask = createTask,
         _updateTask = updateTask,
         _deleteTask = deleteTask,
         _updateTaskStatus = updateTaskStatus,
@@ -179,7 +178,7 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
   }
 
   final GetTasksByProject _getTasksByProject;
-  final CreateTask _createTask;
+  final CreateTask createTask;
   final UpdateTask _updateTask;
   final DeleteTask _deleteTask;
   final UpdateTaskStatus _updateTaskStatus;
@@ -213,7 +212,7 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
   ) async {
     emit(TasksLoading());
 
-    final result = await _createTask(
+    final result = await createTask(
       CreateTaskParams(
         projectId: event.projectId,
         title: event.title,

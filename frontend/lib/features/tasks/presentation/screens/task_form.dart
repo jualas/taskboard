@@ -1,10 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../features/tasks/domain/entities/task.dart';
-import '../../utils/ai_task_conversion.dart';
-import '../../services/services.dart';
-import '../../shared/themes/app_theme.dart';
-import '../../shared/ui/root_scaffold_messenger.dart';
+import '../../domain/entities/task.dart';
+import '../../../../utils/ai_task_conversion.dart';
+import '../../../../services/services.dart';
+import '../../../../shared/themes/app_theme.dart';
+import '../../../../shared/ui/root_scaffold_messenger.dart';
 
 class TaskForm extends StatefulWidget {
   final int projectId;
