@@ -41,7 +41,7 @@ void _registerProjectsStack() {
   sl.registerLazySingleton<ProjectsRepository>(
     () => ProjectsRepositoryImpl(sl<ProjectsRemoteDataSource>()),
   );
-  final repo = () => sl<ProjectsRepository>();
+  ProjectsRepository repo() => sl<ProjectsRepository>();
   sl.registerLazySingleton(() => GetProjects(repo()));
   sl.registerLazySingleton(() => GetProject(repo()));
   sl.registerLazySingleton(() => CreateProject(repo()));
