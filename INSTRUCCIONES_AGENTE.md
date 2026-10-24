@@ -16,7 +16,7 @@ Documento técnico de continuidad para agentes (estado operativo real y procedim
 - Tests por feature: casos de uso, `*RepositoryImpl`, mappers y BLoC (`mocktail`, `bloc_test`); `test/architecture/dependency_rule_test.dart` debe pasar.
 - Antes de cerrar una tarea CA-x: commits hechos, `flutter analyze` sin avisos nuevos respecto a `main`, `flutter test` en verde.
 - Detalle: **`docs/architecture/clean-architecture.md`** (ADR) y regla **`.cursor/rules/clean-architecture.mdc`** (se aplica a `frontend/**` en Cursor y se importa en `CLAUDE.md`).
-- Procedimiento para agentes (Cursor y Claude Code): skill **`flutter-clean-architecture`** (`.cursor/skills/`, enlazado en `.claude/skills/`). Verificación: `.cursor/skills/flutter-clean-architecture/scripts/check.sh --vs-main` (usa Docker si no hay `flutter` local).
+- Procedimiento para agentes (Cursor y Claude Code): skill **`flutter-clean-architecture`** (`.cursor/skills/`, enlazado en `.claude/skills/`). Verificación: `scripts/flutter-check.sh --vs-main` (usa Docker si no hay `flutter` local).
 
 ## 2) Ubicaciones y despliegue actual
 - Raíz del proyecto: `.../Proyectos/taskboard`.
