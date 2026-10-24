@@ -1,0 +1,51 @@
+---
+description: Clean Architecture del cliente Flutter (frontend/lib) — capas, regla de dependencias y convenciones
+globs: frontend/**
+alwaysApply: false
+---
+
+# Clean Architecture — frontend Flutter
+
+Regla propia de este repo (no viene del hub Skills-Rules). Decisiones completas en `docs/architecture/clean-architecture.md`; si esta regla y el documento discrepan, manda el documento y hay que actualizar esta regla.
+
+**Antes de tocar `frontend/`, seguir el skill `flutter-clean-architecture`** (`.cursor/skills/flutter-clean-architecture/SKILL.md`): procedimiento, checklist, deuda conocida y verificación con `scripts/check.sh --vs-main`.
+
+## Regla de dependencias
+
+`presentation → domain ← data`
+
+- **domain** (`features/<f>/domain/`): entidades, repositorios abstractos y casos de uso. Dart puro: sin `package:flutter`, `http`, `dio`, `json_annotation`, `shared_preferences` ni imports de `data/` o `presentation/`.
+- **data** (`features/<f>/data/`): modelos DTO (`*Model`), mappers DTO ↔ entidad, data sources e implementaciones `*RepositoryImpl`. Traduce excepciones a `Failure` con `mapExceptionToFailure`.
+- **presentation** (`features/<f>/presentation/`): BLoC/Cubit, pantallas y widgets. Solo habla con casos de uso; nunca importa `data/` ni llama a servicios o al API directamente.
+- La única pieza que conoce todas las capas es `core/di/injection.dart` (get_it).
+- `test/architecture/dependency_rule_test.dart` comprueba la regla: no se desactiva ni se añaden excepciones sin explicarlo en el ADR.
+
+## Dónde va cada cosa
+
+- **Reglas de negocio** (orden del kanban, validaciones, permisos, conversión de respuestas de IA en tareas): en entidades o casos de uso, no en repositorios, BLoCs ni widgets.
+- **Un caso de uso por fichero y por acción de UI**: `UseCase<T, P>` con `Future<Result<T>> call(P params)`, `NoParams` si no hay parámetros. Nombre verbo + entidad (`GetTasksByProject`, `CreateTask`). Si un caso de uso solo reenvía al repositorio, se acepta, pero no se crea uno "por si acaso".
+- **Errores**: `Result<T>` (`Success` / `ResultFailure`) y `Failure` sellados en `core/error/`. Los repositorios no lanzan excepciones hacia arriba.
+- **DI**: `registerLazySingleton` para data sources, repositorios y casos de uso; `registerFactory` para BLoCs. Los widgets no usan `sl<...>()` para casos de uso: los recibe el BLoC por constructor y la pantalla obtiene el BLoC con `BlocProvider`.
+- **Servicios** (`AiAssistantService`, etc.): no se instancian con `new` dentro de widgets; se registran en DI y se acceden a través de un repositorio/caso de uso de su feature.
+
+## Migración en curso (strangler)
+
+- Features migradas: `tasks`, `projects`. Pendientes: `auth`, `ai_assistant` (ver tabla CA-0…CA-6 del ADR y tareas CA-* en TaskBoard).
+- Código heredado en `lib/screens`, `lib/widgets`, `lib/blocs`, `lib/services`, `lib/models`: no se añade código nuevo ahí. Lo que se toque de una feature ya migrada se mueve a `features/<f>/presentation/`.
+- Cada entrega CA-x: commits pequeños en la rama de la entrega, `flutter analyze` sin avisos nuevos respecto a `main` y `flutter test` en verde antes de marcar la tarea como completada.
+
+## Tests mínimos por feature
+
+- Casos de uso (mocktail sobre el repositorio abstracto).
+- `*RepositoryImpl` (data source simulado; éxito y traducción de errores a `Failure`).
+- Mappers DTO ↔ entidad.
+- BLoC con `bloc_test`.
+
+## Añadir una feature
+
+1. Entidades y repositorio abstracto en `domain/`.
+2. DTO, mapper, data source y `*RepositoryImpl` en `data/`.
+3. Casos de uso, uno por fichero.
+4. BLoC, pantallas y widgets en `presentation/`.
+5. Registro en `configureDependencies`.
+6. Tests anteriores y `dependency_rule_test` en verde.

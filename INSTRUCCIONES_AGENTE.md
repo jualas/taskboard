@@ -8,6 +8,16 @@ Documento técnico de continuidad para agentes (estado operativo real y procedim
 - Backend datos/auth: **API TaskBoard (FastAPI + Postgres)** (`backend/`). Si no hay API configurada, la app puede usar **almacenamiento local** (`StorageService`) solo como demostración.
 - Objetivo: mantener login y despliegue web estables tanto en LAN como por túnel Cloudflare.
 
+## 1.1) Arquitectura del frontend (Clean Architecture) — obligatoria
+- El cliente Flutter (`frontend/lib`) se organiza por funcionalidad en `features/<f>/{domain,data,presentation}` más `core/` y `shared/`.
+- **Regla de dependencias:** `presentation → domain ← data`. `domain` es Dart puro; `presentation` no importa `data/` ni llama al API o a servicios; solo `core/di/injection.dart` (get_it) conoce todas las capas.
+- Reglas de negocio (orden kanban, validaciones, permisos) en entidades o casos de uso; un caso de uso por fichero (`UseCase<T, P>`, `Result<T>` / `Failure`).
+- No añadir código nuevo en `lib/screens`, `lib/widgets`, `lib/blocs`, `lib/services` ni `lib/models` (código heredado en migración); lo que se toque de una feature migrada se mueve a su `presentation/`.
+- Tests por feature: casos de uso, `*RepositoryImpl`, mappers y BLoC (`mocktail`, `bloc_test`); `test/architecture/dependency_rule_test.dart` debe pasar.
+- Antes de cerrar una tarea CA-x: commits hechos, `flutter analyze` sin avisos nuevos respecto a `main`, `flutter test` en verde.
+- Detalle: **`docs/architecture/clean-architecture.md`** (ADR) y regla **`.cursor/rules/clean-architecture.mdc`** (se aplica a `frontend/**` en Cursor y se importa en `CLAUDE.md`).
+- Procedimiento para agentes (Cursor y Claude Code): skill **`flutter-clean-architecture`** (`.cursor/skills/`, enlazado en `.claude/skills/`). Verificación: `.cursor/skills/flutter-clean-architecture/scripts/check.sh --vs-main` (usa Docker si no hay `flutter` local).
+
 ## 2) Ubicaciones y despliegue actual
 - Raíz del proyecto: `.../Proyectos/taskboard`.
 - Frontend fuente: `frontend/`.

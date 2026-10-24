@@ -1,7 +1,18 @@
 # IDE / agentes
-.cursor/
+# Las rules/skills del hub Skills-Rules se instalan en local y no se versionan;
+# solo se publican las propias de este repo (excepciones !). Añadir aquí las nuevas.
 .idea/
-**/.claude/
+.cursor/*
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/clean-architecture.mdc
+!.cursor/skills/
+.cursor/skills/*
+!.cursor/skills/flutter-clean-architecture/
+**/.claude/*
+!/.claude/skills/
+/.claude/skills/*
+!/.claude/skills/flutter-clean-architecture
 
 # Secretos y entornos locales (plantillas *.example sí van al repo)
 **/.env*
