@@ -31,6 +31,11 @@ class ServerFailure extends Failure {
   final int? statusCode;
 }
 
+/// Datos de entrada no válidos (reglas de dominio).
+class ValidationFailure extends Failure {
+  const ValidationFailure(super.message);
+}
+
 class UnexpectedFailure extends Failure {
   const UnexpectedFailure([super.message = 'Ha ocurrido un error inesperado.']);
 }

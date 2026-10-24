@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../services/auth_service.dart';
+import '../../../../core/usecase/usecase.dart';
+import '../../domain/usecases/auth_usecases.dart';
 
 // Events
 abstract class AuthEvent extends Equatable {
@@ -16,10 +17,7 @@ class AuthLoginRequested extends AuthEvent {
   final String email;
   final String password;
 
-  const AuthLoginRequested({
-    required this.email,
-    required this.password,
-  });
+  const AuthLoginRequested({required this.email, required this.password});
 
   @override
   List<Object> get props => [email, password];
@@ -61,26 +59,37 @@ class AuthFailure extends AuthState {
 
 // BLoC
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final AuthService authService;
-
-  AuthBloc({required this.authService}) : super(AuthInitial()) {
+  AuthBloc({
+    required RestoreSession restoreSession,
+    required Login login,
+    required Logout logout,
+    required this.changePassword,
+  }) : _restoreSession = restoreSession,
+       _login = login,
+       _logout = logout,
+       super(AuthInitial()) {
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthLoginRequested>(_onAuthLoginRequested);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
   }
+
+  final RestoreSession _restoreSession;
+  final Login _login;
+  final Logout _logout;
+
+  /// Lo usa el diálogo de cambio de contraseña, que espera el resultado.
+  final ChangePassword changePassword;
 
   Future<void> _onAuthCheckRequested(
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
-    
-    if (authService.isAuthenticated) {
-      emit(
-        AuthAuthenticated(
-          email: authService.currentUserEmail ?? '',
-        ),
-      );
+
+    final result = await _restoreSession(const NoParams());
+    final user = result.valueOrNull;
+    if (user != null) {
+      emit(AuthAuthenticated(email: user.email));
     } else {
       emit(AuthUnauthenticated());
     }
@@ -91,22 +100,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
-    
-    try {
-      final success = await authService.login(event.email, event.password);
-      
-      if (success) {
-        emit(
-          AuthAuthenticated(
-            email: authService.currentUserEmail ?? event.email,
-          ),
-        );
-      } else {
-        emit(const AuthFailure('Credenciales incorrectas'));
-      }
-    } catch (e) {
-      emit(AuthFailure('Error al iniciar sesión: ${e.toString()}'));
-    }
+
+    final result = await _login(
+      LoginParams(email: event.email, password: event.password),
+    );
+    result.when(
+      success: (user) => emit(AuthAuthenticated(email: user.email)),
+      onFailure: (f) =>
+          emit(AuthFailure('Error al iniciar sesión: ${f.message}')),
+    );
   }
 
   Future<void> _onAuthLogoutRequested(
@@ -114,12 +116,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
-    
-    try {
-      await authService.logout();
-      emit(AuthUnauthenticated());
-    } catch (e) {
-      emit(AuthFailure('Error al cerrar sesión: ${e.toString()}'));
-    }
+
+    final result = await _logout(const NoParams());
+    result.when(
+      success: (_) => emit(AuthUnauthenticated()),
+      onFailure: (f) =>
+          emit(AuthFailure('Error al cerrar sesión: ${f.message}')),
+    );
   }
 }

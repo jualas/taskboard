@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../blocs/blocs.dart';
 import '../../../../core/error/result_extensions.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../../auth/domain/usecases/change_password.dart';
 import '../../domain/entities/project.dart';
 import '../../domain/entities/project_member.dart';
 import '../../domain/entities/workspace.dart';
@@ -35,7 +36,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
     final currentCtrl = TextEditingController();
     final newCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
-    final auth = context.read<AuthBloc>().authService;
+    final changePassword = context.read<AuthBloc>().changePassword;
 
     await showDialog<void>(
       context: context,
@@ -96,29 +97,32 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                 );
                 return;
               }
-              try {
-                await auth.changePassword(
+              final result = await changePassword(
+                ChangePasswordParams(
                   currentPassword: currentCtrl.text,
                   newPassword: newCtrl.text,
-                );
-                if (!dialogContext.mounted) return;
-                Navigator.of(dialogContext).pop();
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Contraseña actualizada'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              } catch (e) {
+                ),
+              );
+              final failure = result.failureOrNull;
+              if (failure != null) {
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(e.toString()),
+                    content: Text(failure.message),
                     backgroundColor: AppColors.error,
                   ),
                 );
+                return;
               }
+              if (!dialogContext.mounted) return;
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Contraseña actualizada'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
             },
             child: const Text('Guardar'),
           ),
