@@ -79,12 +79,10 @@ Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stab
 
 ## 7. Deuda conocida (revisar y actualizar al cerrar cada CA-x)
 
-Estado de `main` a 2026-10-24 (tras el PR #17, CA-0…CA-3 fusionadas):
+Estado de `main` a 2026-10-24 (tras los PR #17 y #22, CA-0…CA-4 fusionadas):
 
 - `ProjectsRemoteDataSource` y `TasksRemoteDataSource` siguen adaptando los modelos de `lib/models/` a través de `TaskboardDataSource`. El borrado de `models/task.dart` (de CA-2) y de los modelos de projects (de CA-3) se trasladó a CA-6.
-- `AuthBloc` se construye en `main.dart` → CA-4.
 - `AiAssistantService` usado directamente desde `features/projects/presentation/screens/projects_list_screen.dart`, `features/tasks/presentation/screens/task_form.dart` y `lib/widgets/project_ai_chat_panel.dart` → CA-5.
-- `lib/screens/auth/login_screen.dart`, `lib/blocs/auth_bloc.dart`, `lib/services/auth*` → CA-4.
 - Borrado final de `lib/blocs`, `lib/models`, `lib/services` → CA-6.
 
 Al resolver un punto, quitarlo de esta lista en el mismo commit.
