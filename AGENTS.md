@@ -18,7 +18,7 @@ Antes de crear, modificar o revisar código en `frontend/`, leer y seguir:
 Verificación antes de dar un cambio por terminado (usa Docker si no hay `flutter` local):
 
 ```bash
-.cursor/skills/flutter-clean-architecture/scripts/check.sh --vs-main
+scripts/flutter-check.sh --vs-main
 ```
 
 Debe terminar con tests en verde y sin avisos de `flutter analyze` nuevos respecto a `main`.

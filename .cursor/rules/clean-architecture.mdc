@@ -8,7 +8,7 @@ alwaysApply: false
 
 Regla propia de este repo (no viene del hub Skills-Rules). Decisiones completas en `docs/architecture/clean-architecture.md`; si esta regla y el documento discrepan, manda el documento y hay que actualizar esta regla.
 
-**Antes de tocar `frontend/`, seguir el skill `flutter-clean-architecture`** (`.cursor/skills/flutter-clean-architecture/SKILL.md`): procedimiento, checklist, deuda conocida y verificación con `scripts/check.sh --vs-main`.
+**Antes de tocar `frontend/`, seguir el skill `flutter-clean-architecture`** (`.cursor/skills/flutter-clean-architecture/SKILL.md`): procedimiento, checklist, deuda conocida y verificación con `scripts/flutter-check.sh --vs-main` (raíz del repo).
 
 ## Regla de dependencias
 

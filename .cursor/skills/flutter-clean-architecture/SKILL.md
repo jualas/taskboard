@@ -61,16 +61,17 @@ En `frontend/test/unit/` (y `test/architecture/`):
 Desde la raíz del repo:
 
 ```bash
-.cursor/skills/flutter-clean-architecture/scripts/check.sh          # analyze + test
-.cursor/skills/flutter-clean-architecture/scripts/check.sh --vs-main # además compara avisos con main
+scripts/flutter-check.sh            # analyze + test
+scripts/flutter-check.sh --vs-main  # además compara avisos con origin/main
 ```
 
-Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stable` y devuelve la propiedad de los ficheros al usuario. Criterio: **tests en verde** y **ningún aviso de `flutter analyze` nuevo respecto a `main`** (comparación por tipo de aviso, sin números de línea).
+Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stable` y devuelve la propiedad de los ficheros al usuario. Criterio: **tests en verde** y **ningún aviso de `flutter analyze` nuevo respecto a `main`** (comparación por tipo de aviso, sin números de línea). La base es `origin/main` recién descargado (no el `main` local, que puede estar desactualizado); `--base <ref>` permite otra y `--no-test` omite los tests. El CI ejecuta el mismo script en cada PR contra su rama base.
 
-## 6. Cerrar una entrega CA-x
+## 6. Entregas CA-x
 
-1. Commits pequeños en la rama de la entrega (`refactor(<f>): … (CA-x)`, `test(<f>): … (CA-x)`).
-2. `check.sh --vs-main` sin avisos nuevos y tests en verde.
+0. Empezar cada entrega en una **rama nueva desde `origin/main` actualizado** (`git fetch origin main:main && git switch -c refactor/clean-arch-<n>-<feature> main`). No seguir trabajando en una rama ya fusionada.
+1. Commits pequeños en la rama de la entrega (`refactor(<f>): … (CA-x)`, `test(<f>): … (CA-x)`; también `ci:`/`fix:` llevan `(CA-x)` si son parte de la entrega).
+2. `scripts/flutter-check.sh --vs-main` sin avisos nuevos y tests en verde.
 3. Prueba manual de las pantallas afectadas (`flutter run -d chrome` o build web).
 4. PR con tabla requisito → evidencia (fichero/test que lo demuestra).
 5. En TaskBoard (proyecto 10): marcar subtareas hechas de CA-x y de CA-R; la tarea pasa a `completed` solo con el PR fusionado.
@@ -78,9 +79,9 @@ Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stab
 
 ## 7. Deuda conocida (revisar y actualizar al cerrar cada CA-x)
 
-Estado a 2026-10-24, rama `refactor/clean-architecture`:
+Estado de `main` a 2026-10-24 (tras el PR #17, CA-0…CA-3 fusionadas):
 
-- `ProjectsRemoteDataSource` sigue adaptando los modelos de `lib/models/` a través de `TaskboardDataSource`. El borrado de `lib/models` es CA-6.
+- `ProjectsRemoteDataSource` y `TasksRemoteDataSource` siguen adaptando los modelos de `lib/models/` a través de `TaskboardDataSource`. El borrado de `models/task.dart` (de CA-2) y de los modelos de projects (de CA-3) se trasladó a CA-6.
 - `AuthBloc` se construye en `main.dart` → CA-4.
 - `AiAssistantService` usado directamente desde `features/projects/presentation/screens/projects_list_screen.dart`, `features/tasks/presentation/screens/task_form.dart` y `lib/widgets/project_ai_chat_panel.dart` → CA-5.
 - `lib/screens/auth/login_screen.dart`, `lib/blocs/auth_bloc.dart`, `lib/services/auth*` → CA-4.

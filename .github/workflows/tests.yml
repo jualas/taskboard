@@ -42,14 +42,21 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0 # origin/<rama base> para comparar avisos en PRs
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
           cache: true
       - name: flutter pub get
         run: flutter pub get
-      - name: flutter analyze
+      - name: flutter analyze (errores y warnings bloquean)
         run: flutter analyze --no-fatal-infos
+      - name: Sin avisos nuevos respecto a la base del PR
+        if: github.event_name == 'pull_request'
+        working-directory: .
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: scripts/flutter-check.sh --no-test --base "origin/$BASE_REF"
       - name: flutter test
         run: flutter test --coverage
       - name: Resumen cobertura (lcov)
