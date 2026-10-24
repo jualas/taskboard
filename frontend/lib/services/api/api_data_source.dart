@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../models/models.dart';
 import '../taskboard_data_source.dart';
-import 'taskboard_api_client.dart';
+import '../../core/network/taskboard_api_client.dart';
 
 /// Persistencia remota vía REST + JWT (backend FastAPI).
 class ApiDataSource implements TaskboardDataSource {

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../models/models.dart';
+import '../features/tasks/domain/entities/task.dart';
+import '../features/tasks/domain/usecases/tasks_usecases.dart';
+import '../models/agent_session.dart';
+import '../models/task.dart' show TaskComplexityExtension;
 import '../services/ai_assistant_service.dart';
-import '../services/tasks_service.dart';
-import '../themes/app_theme.dart';
-import '../ui/root_scaffold_messenger.dart';
+import '../shared/themes/app_theme.dart';
+import '../shared/ui/root_scaffold_messenger.dart';
 import '../utils/ai_task_conversion.dart';
 
 enum ProjectAiChatMode { create, existing }
@@ -20,7 +22,7 @@ class ProjectAiChatPanel extends StatefulWidget {
     required this.projectDescription,
     this.projectId,
     this.existingTasks = const [],
-    this.tasksService,
+    this.createTask,
     this.onDraftTasksChanged,
     this.onTasksApplied,
   });
@@ -30,7 +32,7 @@ class ProjectAiChatPanel extends StatefulWidget {
   final String projectDescription;
   final int? projectId;
   final List<Task> existingTasks;
-  final TasksService? tasksService;
+  final CreateTask? createTask;
   final ValueChanged<List<AiTaskSuggestion>>? onDraftTasksChanged;
   final VoidCallback? onTasksApplied;
 
@@ -412,8 +414,8 @@ class _ProjectAiChatPanelState extends State<ProjectAiChatPanel> {
   Future<void> _applyNewTasks() async {
     if (widget.mode != ProjectAiChatMode.existing) return;
     final projectId = widget.projectId;
-    final tasksService = widget.tasksService;
-    if (projectId == null || tasksService == null || _isApplying) return;
+    final createTask = widget.createTask;
+    if (projectId == null || createTask == null || _isApplying) return;
 
     final pending = newTasksInDraft(draft: _draftTasks, baseline: _baseline);
     if (pending.isEmpty) {
@@ -429,7 +431,7 @@ class _ProjectAiChatPanelState extends State<ProjectAiChatPanel> {
     setState(() => _isApplying = true);
     try {
       final count = await applyNewAiTasksToProject(
-        tasksService: tasksService,
+        createTask: createTask,
         projectId: projectId,
         draft: _draftTasks,
         baseline: _baseline,

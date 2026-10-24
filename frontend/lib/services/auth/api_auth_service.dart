@@ -2,7 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:personal_taskboard/services/api/taskboard_api_client.dart' show TaskboardApiClient;
+import 'package:personal_taskboard/core/network/taskboard_api_client.dart'
+    show TaskboardApiClient;
 import 'package:personal_taskboard/services/services.dart' show TaskboardApiClient;
 import 'package:shared_preferences/shared_preferences.dart';
 
