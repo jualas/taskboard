@@ -7,11 +7,11 @@ import '../../domain/entities/task.dart';
 import '../../../../shared/themes/app_theme.dart';
 import 'task_form.dart';
 import '../../../../widgets/project_ai_chat_sheet.dart';
-import '../../../../widgets/project_screen_title.dart';
-import '../../../../widgets/open_in_cursor_button.dart';
+import '../../../projects/presentation/widgets/project_screen_title.dart';
+import '../../../projects/presentation/widgets/open_in_cursor_button.dart';
 import '../widgets/task_detail_sheet.dart';
 import '../../../../utils/export_taskboard_md.dart';
-import '../../../../widgets/ide_cursor_session_sheet.dart';
+import '../../../projects/presentation/widgets/ide_cursor_session_sheet.dart';
 
 class KanbanBoard extends StatefulWidget {
   final int projectId;

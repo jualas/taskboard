@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../blocs/blocs.dart';
-import '../../core/error/result_extensions.dart';
-import '../../core/usecase/usecase.dart';
-import '../../features/projects/domain/entities/project.dart';
-import '../../features/projects/domain/entities/project_member.dart';
-import '../../features/projects/domain/entities/workspace.dart';
-import '../../features/projects/domain/usecases/projects_usecases.dart';
-import '../../services/ai_assistant_service.dart';
-import '../../shared/themes/app_theme.dart';
-import '../../widgets/workspace_suggestions_sheet.dart';
-import '../../widgets/workspace_inventory_sheet.dart';
-import '../../widgets/open_in_cursor_button.dart';
-import '../../utils/export_taskboard_md.dart';
-import '../../widgets/ide_cursor_session_sheet.dart';
+import '../../../../blocs/blocs.dart';
+import '../../../../core/error/result_extensions.dart';
+import '../../../../core/usecase/usecase.dart';
+import '../../domain/entities/project.dart';
+import '../../domain/entities/project_member.dart';
+import '../../domain/entities/workspace.dart';
+import '../../domain/usecases/projects_usecases.dart';
+import '../../../../services/ai_assistant_service.dart';
+import '../../../../shared/themes/app_theme.dart';
+import '../widgets/workspace_suggestions_sheet.dart';
+import '../widgets/workspace_inventory_sheet.dart';
+import '../widgets/open_in_cursor_button.dart';
+import '../../../../utils/export_taskboard_md.dart';
+import '../widgets/ide_cursor_session_sheet.dart';
 
 class ProjectsListScreen extends StatefulWidget {
   const ProjectsListScreen({super.key});
@@ -703,7 +703,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
             .read<ProjectsBloc>()
             .previewWorkspaceSnapshot(path)
             .then((r) => r.require('Vista previa workspace'));
-        final summary = (snapshot['summary'] ?? '').toString().trim();
+        final summary = snapshot.summary;
         if (!context.mounted) return;
         setDialogState(() {
           workspacePreview = summary.isNotEmpty

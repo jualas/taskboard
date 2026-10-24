@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/auth_service.dart';
 import '../../screens/auth/login_screen.dart';
-import '../../screens/projects/projects_list_screen.dart';
+import '../../features/projects/presentation/screens/projects_list_screen.dart';
 import '../../features/tasks/presentation/screens/kanban_board.dart';
 import '../../features/tasks/presentation/screens/tasks_list.dart';
 

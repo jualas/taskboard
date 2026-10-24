@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../utils/workspace_remote_settings.dart';
+import '../../../../utils/workspace_remote_settings.dart';
 
 /// Abre la carpeta workspace en Cursor (`cursor://file/...`) o copia la ruta.
 class OpenInCursor {

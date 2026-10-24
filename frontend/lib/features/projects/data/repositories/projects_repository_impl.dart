@@ -1,5 +1,4 @@
 import '../../../../core/error/exception_to_failure.dart';
-import '../../../../core/error/failures.dart';
 import '../../../../core/error/result.dart';
 import '../../domain/entities/project.dart';
 import '../../domain/entities/project_member.dart';
@@ -31,20 +30,8 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   }
 
   @override
-  Future<Result<Project>> createProject({
-    required String title,
-    String description = '',
-    ProjectStatus status = ProjectStatus.planning,
-    String workspacePath = '',
-  }) async {
+  Future<Result<Project>> createProject(Project project) async {
     try {
-      final project = Project.create(
-        id: 0,
-        title: title,
-        description: description,
-        status: status,
-        workspacePath: workspacePath,
-      );
       return Success(await _remote.createProject(project));
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -71,28 +58,14 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   }
 
   @override
-  Future<Result<Project>> updateProjectStatus(int id, ProjectStatus status) async {
-    try {
-      final current = await _remote.getProject(id);
-      if (current == null) {
-        return const ResultFailure(NotFoundFailure('Proyecto no encontrado'));
-      }
-      final updated = current.copyWith(
-        status: status,
-        updatedAt: DateTime.now(),
-      );
-      return Success(await _remote.saveProject(updated));
-    } catch (e) {
-      return ResultFailure(mapExceptionToFailure(e));
-    }
-  }
-
-  @override
-  Future<Result<Map<String, dynamic>>> previewWorkspaceSnapshot(
+  Future<Result<WorkspacePreview>> previewWorkspaceSnapshot(
     String path,
   ) async {
     try {
-      return Success(await _remote.previewWorkspaceSnapshot(path));
+      final raw = await _remote.previewWorkspaceSnapshot(path);
+      return Success(
+        WorkspacePreview((raw['summary'] ?? '').toString().trim()),
+      );
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -124,27 +97,31 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   }
 
   @override
-  Future<Result<Map<String, dynamic>>> syncProjectWorkspace(int projectId) async {
+  Future<Result<void>> syncProjectWorkspace(int projectId) async {
     try {
-      return Success(await _remote.syncProjectWorkspace(projectId));
+      await _remote.syncProjectWorkspace(projectId);
+      return const Success(null);
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
   }
 
   @override
-  Future<Result<Map<String, dynamic>>> exportTaskboardMd(
+  Future<Result<TaskboardExport>> exportTaskboardMd(
     int projectId, {
     bool dryRun = false,
     String filename = '',
   }) async {
     try {
+      final raw = await _remote.exportTaskboardMd(
+        projectId,
+        dryRun: dryRun,
+        filename: filename,
+      );
+      final path = (raw['file_path'] ?? raw['filePath'] ?? '').toString();
+      final count = raw['task_count'] ?? raw['taskCount'] ?? '?';
       return Success(
-        await _remote.exportTaskboardMd(
-          projectId,
-          dryRun: dryRun,
-          filename: filename,
-        ),
+        TaskboardExport(filePath: path, taskCountLabel: count.toString()),
       );
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -177,14 +154,13 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   }
 
   @override
-  Future<Result<Map<String, dynamic>>> applyWorkspaceSuggestion(
+  Future<Result<void>> applyWorkspaceSuggestion(
     int projectId,
     int suggestionId,
   ) async {
     try {
-      return Success(
-        await _remote.applyWorkspaceSuggestion(projectId, suggestionId),
-      );
+      await _remote.applyWorkspaceSuggestion(projectId, suggestionId);
+      return const Success(null);
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }

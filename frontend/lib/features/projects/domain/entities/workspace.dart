@@ -1,3 +1,18 @@
+/// Lo que la UI lee de la vista previa de un workspace.
+class WorkspacePreview {
+  const WorkspacePreview(this.summary);
+
+  final String summary;
+}
+
+/// Lo que la UI muestra tras exportar TASKBOARD.md.
+class TaskboardExport {
+  const TaskboardExport({required this.filePath, required this.taskCountLabel});
+
+  final String filePath;
+  final String taskCountLabel;
+}
+
 class WorkspaceSuggestion {
   const WorkspaceSuggestion({
     required this.id,

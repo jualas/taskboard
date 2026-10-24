@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../core/error/result_extensions.dart';
-import '../features/projects/domain/entities/project.dart';
-import '../features/projects/domain/entities/workspace.dart';
-import '../features/projects/domain/usecases/projects_usecases.dart';
-import '../features/projects/presentation/bloc/projects_bloc.dart';
-import '../features/tasks/presentation/bloc/tasks_bloc.dart';
-import '../shared/themes/app_theme.dart';
+import '../../../../core/error/result_extensions.dart';
+import '../../domain/entities/project.dart';
+import '../../domain/entities/workspace.dart';
+import '../../domain/usecases/projects_usecases.dart';
+import '../bloc/projects_bloc.dart';
+import '../../../tasks/presentation/bloc/tasks_bloc.dart';
+import '../../../../shared/themes/app_theme.dart';
 import 'open_in_cursor_button.dart';
 
 Future<void> showWorkspaceSuggestionsSheet(

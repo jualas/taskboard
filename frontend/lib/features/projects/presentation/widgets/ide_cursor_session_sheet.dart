@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../core/error/result_extensions.dart';
-import '../features/projects/domain/entities/project.dart';
-import '../features/projects/domain/entities/workspace.dart';
-import '../features/projects/domain/usecases/projects_usecases.dart';
-import '../shared/themes/app_theme.dart';
-import '../shared/ui/root_scaffold_messenger.dart';
+import '../../../../core/error/result_extensions.dart';
+import '../../domain/entities/project.dart';
+import '../../domain/entities/workspace.dart';
+import '../../domain/usecases/projects_usecases.dart';
+import '../../../../shared/themes/app_theme.dart';
+import '../../../../shared/ui/root_scaffold_messenger.dart';
 import 'open_in_cursor_button.dart';
 
 /// Prepara TASKBOARD.md + plantilla de prompt y la muestra para copiar al IDE.

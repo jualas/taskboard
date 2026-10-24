@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../blocs/blocs.dart';
-import '../shared/themes/app_theme.dart';
+import '../../../../blocs/blocs.dart';
+import '../../../../shared/themes/app_theme.dart';
 
 /// Título de AppBar con nombre del proyecto y etiqueta de la vista (Kanban, lista…).
 class ProjectScreenTitle extends StatefulWidget {

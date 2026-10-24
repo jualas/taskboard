@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'blocs/blocs.dart';
 import 'core/di/injection.dart';
-import 'features/projects/domain/usecases/projects_usecases.dart';
-import 'features/tasks/domain/usecases/tasks_usecases.dart';
 import 'services/services.dart';
 import 'shared/router/app_router.dart';
 import 'shared/themes/app_theme.dart';
@@ -60,39 +58,8 @@ class _TaskBoardAppState extends State<TaskBoardApp> {
               AuthBloc(authService: widget.authService)
                 ..add(AuthCheckRequested()),
         ),
-        BlocProvider(
-          create: (_) => ProjectsBloc(
-            getProjects: sl<GetProjects>(),
-            createProject: sl<CreateProject>(),
-            updateProject: sl<UpdateProject>(),
-            deleteProject: sl<DeleteProject>(),
-            updateProjectStatus: sl<UpdateProjectStatus>(),
-            getProject: sl<GetProject>(),
-            previewWorkspaceSnapshot: sl<PreviewWorkspaceSnapshot>(),
-            getWorkspaceSuggestions: sl<GetWorkspaceSuggestions>(),
-            applyWorkspaceSuggestion: sl<ApplyWorkspaceSuggestion>(),
-            dismissWorkspaceSuggestion: sl<DismissWorkspaceSuggestion>(),
-            syncProjectWorkspace: sl<SyncProjectWorkspace>(),
-            getWorkspaceInventory: sl<GetWorkspaceInventory>(),
-            exportTaskboardMd: sl<ExportTaskboardMd>(),
-            prepareIdeSession: sl<PrepareIdeSession>(),
-            getProjectMembers: sl<GetProjectMembers>(),
-            getRegisteredUsers: sl<GetRegisteredUsers>(),
-            addProjectMember: sl<AddProjectMember>(),
-            updateProjectMemberRole: sl<UpdateProjectMemberRole>(),
-            removeProjectMember: sl<RemoveProjectMember>(),
-          ),
-        ),
-        BlocProvider(
-          create: (_) => TasksBloc(
-            getTasksByProject: sl<GetTasksByProject>(),
-            createTask: sl<CreateTask>(),
-            updateTask: sl<UpdateTask>(),
-            deleteTask: sl<DeleteTask>(),
-            updateTaskStatus: sl<UpdateTaskStatus>(),
-            moveTask: sl<MoveTask>(),
-          ),
-        ),
+        BlocProvider(create: (_) => sl<ProjectsBloc>()),
+        BlocProvider(create: (_) => sl<TasksBloc>()),
       ],
       child: MaterialApp.router(
         title: 'TaskBoard Personal',

@@ -6,10 +6,12 @@ import '../../features/projects/data/datasources/projects_remote_data_source.dar
 import '../../features/projects/data/repositories/projects_repository_impl.dart';
 import '../../features/projects/domain/repositories/projects_repository.dart';
 import '../../features/projects/domain/usecases/projects_usecases.dart';
+import '../../features/projects/presentation/bloc/projects_bloc.dart';
 import '../../features/tasks/data/datasources/tasks_remote_data_source.dart';
 import '../../features/tasks/data/repositories/tasks_repository_impl.dart';
 import '../../features/tasks/domain/repositories/tasks_repository.dart';
 import '../../features/tasks/domain/usecases/tasks_usecases.dart';
+import '../../features/tasks/presentation/bloc/tasks_bloc.dart';
 import '../../services/ai_assistant_service.dart';
 import '../../services/api/api_data_source.dart';
 import '../../services/auth/api_auth_service.dart';
@@ -61,6 +63,29 @@ void _registerProjectsStack() {
   sl.registerLazySingleton(() => AddProjectMember(repo()));
   sl.registerLazySingleton(() => UpdateProjectMemberRole(repo()));
   sl.registerLazySingleton(() => RemoveProjectMember(repo()));
+  sl.registerFactory(
+    () => ProjectsBloc(
+      getProjects: sl<GetProjects>(),
+      createProject: sl<CreateProject>(),
+      updateProject: sl<UpdateProject>(),
+      deleteProject: sl<DeleteProject>(),
+      updateProjectStatus: sl<UpdateProjectStatus>(),
+      getProject: sl<GetProject>(),
+      previewWorkspaceSnapshot: sl<PreviewWorkspaceSnapshot>(),
+      getWorkspaceSuggestions: sl<GetWorkspaceSuggestions>(),
+      applyWorkspaceSuggestion: sl<ApplyWorkspaceSuggestion>(),
+      dismissWorkspaceSuggestion: sl<DismissWorkspaceSuggestion>(),
+      syncProjectWorkspace: sl<SyncProjectWorkspace>(),
+      getWorkspaceInventory: sl<GetWorkspaceInventory>(),
+      exportTaskboardMd: sl<ExportTaskboardMd>(),
+      prepareIdeSession: sl<PrepareIdeSession>(),
+      getProjectMembers: sl<GetProjectMembers>(),
+      getRegisteredUsers: sl<GetRegisteredUsers>(),
+      addProjectMember: sl<AddProjectMember>(),
+      updateProjectMemberRole: sl<UpdateProjectMemberRole>(),
+      removeProjectMember: sl<RemoveProjectMember>(),
+    ),
+  );
 }
 
 void _registerTasksStack() {
@@ -76,6 +101,16 @@ void _registerTasksStack() {
   sl.registerLazySingleton(() => DeleteTask(sl<TasksRepository>()));
   sl.registerLazySingleton(() => UpdateTaskStatus(sl<TasksRepository>()));
   sl.registerLazySingleton(() => MoveTask(sl<TasksRepository>()));
+  sl.registerFactory(
+    () => TasksBloc(
+      getTasksByProject: sl<GetTasksByProject>(),
+      createTask: sl<CreateTask>(),
+      updateTask: sl<UpdateTask>(),
+      deleteTask: sl<DeleteTask>(),
+      updateTaskStatus: sl<UpdateTaskStatus>(),
+      moveTask: sl<MoveTask>(),
+    ),
+  );
 }
 
 Future<AppDependencies> configureDependencies(

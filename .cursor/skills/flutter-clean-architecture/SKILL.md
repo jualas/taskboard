@@ -80,11 +80,10 @@ Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stab
 
 Estado a 2026-10-24, rama `refactor/clean-architecture`:
 
-- `features/projects/data/datasources/projects_remote_data_source.dart` usa modelos heredados de `lib/models/` y `TaskboardDataSource` → CA-3.
-- `ProjectsBloc` y `TasksBloc` se construyen en `main.dart` con `sl<UseCase>()`; deben registrarse con `registerFactory` → CA-3 / CA-R.
-- `AiAssistantService` usado directamente desde `projects_list_screen.dart`, `tasks/presentation/screens/task_form.dart` y `lib/widgets/project_ai_chat_panel.dart` → CA-5.
+- `ProjectsRemoteDataSource` sigue adaptando los modelos de `lib/models/` a través de `TaskboardDataSource`. El borrado de `lib/models` es CA-6.
+- `AuthBloc` se construye en `main.dart` → CA-4.
+- `AiAssistantService` usado directamente desde `features/projects/presentation/screens/projects_list_screen.dart`, `features/tasks/presentation/screens/task_form.dart` y `lib/widgets/project_ai_chat_panel.dart` → CA-5.
 - `lib/screens/auth/login_screen.dart`, `lib/blocs/auth_bloc.dart`, `lib/services/auth*` → CA-4.
-- `dependency_rule_test` no cubre `lib/screens` ni `lib/widgets` → CA-R (A6).
 - Borrado final de `lib/blocs`, `lib/models`, `lib/services` → CA-6.
 
 Al resolver un punto, quitarlo de esta lista en el mismo commit.

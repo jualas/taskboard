@@ -3,44 +3,16 @@ import '../entities/project.dart';
 import '../entities/project_member.dart';
 import '../entities/workspace.dart';
 
-abstract class ProjectsRepository {
+abstract class ProjectCrudRepository {
   Future<Result<List<Project>>> getProjects();
   Future<Result<Project?>> getProject(int id);
-  Future<Result<Project>> createProject({
-    required String title,
-    String description,
-    ProjectStatus status,
-    String workspacePath,
-  });
+  Future<Result<Project>> createProject(Project project);
   Future<Result<Project>> updateProject(Project project);
   Future<Result<void>> deleteProject(int id);
-  Future<Result<Project>> updateProjectStatus(int id, ProjectStatus status);
+  Future<Result<bool>> canEditProject(int projectId);
+}
 
-  Future<Result<Map<String, dynamic>>> previewWorkspaceSnapshot(String path);
-  Future<Result<Map<String, dynamic>>> getProjectWorkspaceSnapshot(
-    int projectId,
-  );
-  Future<Result<List<WorkspaceSuggestion>>> getWorkspaceSuggestions(
-    int projectId, {
-    String state,
-  });
-  Future<Result<Map<String, dynamic>>> syncProjectWorkspace(int projectId);
-  Future<Result<Map<String, dynamic>>> exportTaskboardMd(
-    int projectId, {
-    bool dryRun,
-    String filename,
-  });
-  Future<Result<IdePrompt>> getIdePrompt(int projectId, {int? focusTaskId});
-  Future<Result<IdePrompt>> prepareIdeSession(int projectId, {int? focusTaskId});
-  Future<Result<Map<String, dynamic>>> applyWorkspaceSuggestion(
-    int projectId,
-    int suggestionId,
-  );
-  Future<Result<void>> dismissWorkspaceSuggestion(
-    int projectId,
-    int suggestionId,
-  );
-  Future<Result<WorkspaceInventory>> getWorkspaceInventory();
+abstract class ProjectMembersRepository {
   Future<Result<List<AppUser>>> getRegisteredUsers();
   Future<Result<List<ProjectMember>>> getProjectMembers(int projectId);
   Future<Result<ProjectMember>> addProjectMember({
@@ -57,5 +29,43 @@ abstract class ProjectsRepository {
     required int projectId,
     required String userId,
   });
-  Future<Result<bool>> canEditProject(int projectId);
 }
+
+abstract class WorkspaceRepository {
+  Future<Result<WorkspacePreview>> previewWorkspaceSnapshot(String path);
+  Future<Result<Map<String, dynamic>>> getProjectWorkspaceSnapshot(
+    int projectId,
+  );
+  Future<Result<List<WorkspaceSuggestion>>> getWorkspaceSuggestions(
+    int projectId, {
+    String state,
+  });
+  Future<Result<void>> syncProjectWorkspace(int projectId);
+  Future<Result<TaskboardExport>> exportTaskboardMd(
+    int projectId, {
+    bool dryRun,
+    String filename,
+  });
+  Future<Result<void>> applyWorkspaceSuggestion(
+    int projectId,
+    int suggestionId,
+  );
+  Future<Result<void>> dismissWorkspaceSuggestion(
+    int projectId,
+    int suggestionId,
+  );
+  Future<Result<WorkspaceInventory>> getWorkspaceInventory();
+}
+
+abstract class IdeRepository {
+  Future<Result<IdePrompt>> getIdePrompt(int projectId, {int? focusTaskId});
+  Future<Result<IdePrompt>> prepareIdeSession(int projectId, {int? focusTaskId});
+}
+
+/// Fachada: una implementación cubre los cuatro contratos segregados.
+abstract class ProjectsRepository
+    implements
+        ProjectCrudRepository,
+        ProjectMembersRepository,
+        WorkspaceRepository,
+        IdeRepository {}

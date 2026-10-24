@@ -34,8 +34,8 @@ Future<void> exportTaskboardMdAction(
       ExportTaskboardMdParams(projectId: project.id),
     ).then((r) => r.require('Exportar TASKBOARD.md'));
     if (!context.mounted) return;
-    final path = (result['file_path'] ?? result['filePath'] ?? '').toString();
-    final count = result['task_count'] ?? result['taskCount'] ?? '?';
+    final path = result.filePath;
+    final count = result.taskCountLabel;
     kRootScaffoldMessenger.currentState?.showSnackBar(
       SnackBar(
         content: Text(
