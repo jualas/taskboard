@@ -75,7 +75,7 @@ class TasksRemoteDataSourceImpl implements TasksRemoteDataSource {
   @override
   Future<int> getNextTaskId() async {
     try {
-      return _dataSource.getNextTaskId();
+      return await _dataSource.getNextTaskId();
     } catch (e) {
       rethrowAsAppException(e, context: 'getNextTaskId');
     }

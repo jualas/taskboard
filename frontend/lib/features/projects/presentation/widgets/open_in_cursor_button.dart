@@ -116,7 +116,7 @@ class OpenInCursor {
     final uri = Uri.parse(uriStr);
     try {
       if (await canLaunchUrl(uri)) {
-        return launchUrl(uri, mode: LaunchMode.externalApplication);
+        return await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (_) {}
     return false;
