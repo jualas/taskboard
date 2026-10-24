@@ -30,7 +30,7 @@ Regla propia de este repo (no viene del hub Skills-Rules). Decisiones completas 
 
 ## Migración en curso (strangler)
 
-- Features migradas: `tasks`, `projects`. Pendientes: `auth`, `ai_assistant` (ver tabla CA-0…CA-6 del ADR y tareas CA-* en TaskBoard).
+- Features migradas: `tasks`, `projects`, `auth`. Pendiente: `ai_assistant` (ver tabla CA-0…CA-6 del ADR y tareas CA-* en TaskBoard).
 - Código heredado en `lib/screens`, `lib/widgets`, `lib/blocs`, `lib/services`, `lib/models`: no se añade código nuevo ahí. Lo que se toque de una feature ya migrada se mueve a `features/<f>/presentation/`.
 - Cada entrega CA-x: commits pequeños en la rama de la entrega, `flutter analyze` sin avisos nuevos respecto a `main` y `flutter test` en verde antes de marcar la tarea como completada.
 

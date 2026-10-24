@@ -3,21 +3,23 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'token_provider.dart';
+
 /// Cliente HTTP hacia el backend TaskBoard (FastAPI), con Bearer JWT.
 class TaskboardApiClient {
   TaskboardApiClient({
     required this.baseUrl,
-    required this.accessTokenProvider,
+    required this.tokenProvider,
   });
 
   final String baseUrl;
-  final String? Function() accessTokenProvider;
+  final TokenProvider tokenProvider;
 
   String get origin =>
       baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
 
   Map<String, String> _headers({bool jsonBody = false}) {
-    final t = accessTokenProvider();
+    final t = tokenProvider.accessToken;
     if (t == null || t.isEmpty) {
       throw Exception('No hay token de acceso. Inicia sesión de nuevo.');
     }

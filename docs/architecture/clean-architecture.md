@@ -53,7 +53,7 @@ Features: `auth`, `projects`, `tasks`, `ai_assistant`.
 ## Errores
 
 - **`Result<T>`** en `core/error/result.dart`: `Success<T>` o `ResultFailure<T>` (envuelve `Failure`).
-- **`Failure`**: `NetworkFailure`, `UnauthorizedFailure`, `NotFoundFailure`, `ServerFailure`, `UnexpectedFailure`.
+- **`Failure`**: `NetworkFailure`, `UnauthorizedFailure`, `NotFoundFailure`, `ServerFailure`, `ValidationFailure` (reglas de entrada de un caso de uso), `UnexpectedFailure`.
 - Excepciones en **data** (`ServerException`, …); los repositorios las traducen a `Failure` con `mapExceptionToFailure`.
 
 ## Casos de uso
@@ -61,6 +61,13 @@ Features: `auth`, `projects`, `tasks`, `ai_assistant`.
 - Base: `UseCase<T, P>` con `Future<Result<T>> call(P params)`.
 - `NoParams` cuando no hay parámetros.
 - Una clase por acción expuesta a la UI (p. ej. `GetTasksByProject`).
+
+## Sesión (auth)
+
+- `TokenProvider` en `core/network/` es la interfaz de la que `TaskboardApiClient` lee el token; la implementa `AuthLocalDataSource` (data de auth), así core no depende de features.
+- `AuthRepositoryImpl` funciona en dos modos según la configuración: con `AuthRemoteDataSource` (API JWT) o sin él (modo local de demostración, `DemoAuthLocalDataSource`). La elección se hace en `configureDependencies`.
+- El router necesita una comprobación síncrona: recibe `isAuthenticated` y el stream `sessionChanges` del repositorio desde `AppDependencies`, no el repositorio.
+- El diálogo de cambio de contraseña espera el resultado, así que usa el caso de uso `ChangePassword` expuesto por `AuthBloc` (mismo patrón que `TasksBloc.createTask`).
 
 ## Inyección de dependencias
 

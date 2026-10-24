@@ -17,20 +17,20 @@ void main() async {
 
   runApp(
     TaskBoardApp(
-      authService: deps.authService,
-      authRefreshListenable: deps.authRefreshListenable,
+      isAuthenticated: deps.isAuthenticated,
+      authChanges: deps.authChanges,
     ),
   );
 }
 
 class TaskBoardApp extends StatefulWidget {
-  final AuthService authService;
-  final Listenable? authRefreshListenable;
+  final bool Function() isAuthenticated;
+  final Stream<Object?> authChanges;
 
   const TaskBoardApp({
     super.key,
-    required this.authService,
-    required this.authRefreshListenable,
+    required this.isAuthenticated,
+    required this.authChanges,
   });
 
   @override
@@ -44,8 +44,8 @@ class _TaskBoardAppState extends State<TaskBoardApp> {
   void initState() {
     super.initState();
     _appRouter = AppRouter(
-      authService: widget.authService,
-      authRefreshListenable: widget.authRefreshListenable,
+      isAuthenticated: widget.isAuthenticated,
+      authChanges: widget.authChanges,
     );
   }
 
@@ -54,9 +54,7 @@ class _TaskBoardAppState extends State<TaskBoardApp> {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (_) =>
-              AuthBloc(authService: widget.authService)
-                ..add(AuthCheckRequested()),
+          create: (_) => sl<AuthBloc>()..add(AuthCheckRequested()),
         ),
         BlocProvider(create: (_) => sl<ProjectsBloc>()),
         BlocProvider(create: (_) => sl<TasksBloc>()),

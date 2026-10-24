@@ -1,27 +1,29 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../services/auth_service.dart';
-import '../../screens/auth/login_screen.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/projects/presentation/screens/projects_list_screen.dart';
 import '../../features/tasks/presentation/screens/kanban_board.dart';
 import '../../features/tasks/presentation/screens/tasks_list.dart';
 
 /// Router simplificado para la aplicación TaskBoard Personal
 class AppRouter {
-  final AuthService authService;
-  final Listenable? authRefreshListenable;
+  /// Consulta síncrona de la sesión para el redirect.
+  final bool Function() isAuthenticated;
+  final _StreamListenable? _refresh;
   late final GoRouter router;
 
   AppRouter({
-    required this.authService,
-    this.authRefreshListenable,
-  }) {
+    required this.isAuthenticated,
+    Stream<Object?>? authChanges,
+  }) : _refresh = authChanges == null ? null : _StreamListenable(authChanges) {
     router = GoRouter(
       initialLocation: '/login',
       debugLogDiagnostics: true,
-      refreshListenable: authRefreshListenable,
+      refreshListenable: _refresh,
       redirect: (context, state) {
-        final isAuthenticated = authService.isAuthenticated;
+        final isAuthenticated = this.isAuthenticated();
         final isLoggingIn = state.matchedLocation == '/login';
 
         // Si no está autenticado y no está en login, redirigir a login
@@ -105,5 +107,20 @@ class AppRouter {
         ),
       ),
     );
+  }
+}
+
+/// Re-evalúa el redirect cada vez que cambia la sesión.
+class _StreamListenable extends ChangeNotifier {
+  _StreamListenable(Stream<Object?> stream) {
+    _subscription = stream.listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<Object?> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 }

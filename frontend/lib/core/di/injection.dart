@@ -1,7 +1,13 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/material.dart' show Listenable;
 import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/auth/data/datasources/auth_local_data_source.dart';
+import '../../features/auth/data/datasources/auth_remote_data_source.dart';
+import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/domain/usecases/auth_usecases.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/projects/data/datasources/projects_remote_data_source.dart';
 import '../../features/projects/data/repositories/projects_repository_impl.dart';
 import '../../features/projects/domain/repositories/projects_repository.dart';
@@ -14,12 +20,10 @@ import '../../features/tasks/domain/usecases/tasks_usecases.dart';
 import '../../features/tasks/presentation/bloc/tasks_bloc.dart';
 import '../../services/ai_assistant_service.dart';
 import '../../services/api/api_data_source.dart';
-import '../../services/auth/api_auth_service.dart';
-import '../../services/auth/auth_service.dart';
-import '../../services/auth/local_auth_service.dart';
 import '../../utils/workspace_remote_settings.dart';
 import '../network/taskboard_api_client.dart';
 import '../storage/storage_service.dart';
+import '../usecase/usecase.dart';
 import '../../services/taskboard_data_source.dart';
 
 final sl = GetIt.instance;
@@ -27,13 +31,63 @@ final sl = GetIt.instance;
 class AppDependencies {
   const AppDependencies({
     required this.dataSource,
-    required this.authService,
-    required this.authRefreshListenable,
+    required this.isAuthenticated,
+    required this.authChanges,
   });
 
   final TaskboardDataSource dataSource;
-  final AuthService authService;
-  final Listenable? authRefreshListenable;
+
+  /// Para el redirect del router (síncrono).
+  final bool Function() isAuthenticated;
+
+  /// Emite al iniciar o cerrar sesión.
+  final Stream<Object?> authChanges;
+}
+
+AppDependencies _appDependencies() {
+  final auth = sl<AuthRepository>();
+  return AppDependencies(
+    dataSource: sl<TaskboardDataSource>(),
+    isAuthenticated: () => auth.currentUser != null,
+    authChanges: auth.sessionChanges,
+  );
+}
+
+/// Con [apiUrl] valida contra el API; sin él, modo local de demostración.
+void _registerAuthStack(SharedPreferences prefs, {String? apiUrl}) {
+  if (apiUrl != null) {
+    sl.registerLazySingleton<AuthLocalDataSource>(
+      () => AuthLocalDataSourceImpl(prefs),
+    );
+    sl.registerLazySingleton<AuthRemoteDataSource>(
+      () => AuthRemoteDataSourceImpl(baseUrl: apiUrl),
+    );
+  } else {
+    sl.registerLazySingleton<AuthLocalDataSource>(
+      () => DemoAuthLocalDataSource(prefs),
+    );
+  }
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(
+      local: sl<AuthLocalDataSource>(),
+      remote: sl.isRegistered<AuthRemoteDataSource>()
+          ? sl<AuthRemoteDataSource>()
+          : null,
+    ),
+  );
+  AuthRepository repo() => sl<AuthRepository>();
+  sl.registerLazySingleton(() => RestoreSession(repo()));
+  sl.registerLazySingleton(() => Login(repo()));
+  sl.registerLazySingleton(() => Logout(repo()));
+  sl.registerLazySingleton(() => ChangePassword(repo()));
+  sl.registerFactory(
+    () => AuthBloc(
+      restoreSession: sl<RestoreSession>(),
+      login: sl<Login>(),
+      logout: sl<Logout>(),
+      changePassword: sl<ChangePassword>(),
+    ),
+  );
 }
 
 void _registerProjectsStack() {
@@ -117,15 +171,7 @@ Future<AppDependencies> configureDependencies(
   StorageService storageService,
 ) async {
   if (sl.isRegistered<TaskboardDataSource>()) {
-    Listenable? authRefresh;
-    if (sl.isRegistered<Listenable>(instanceName: 'authRefresh')) {
-      authRefresh = sl<Listenable>(instanceName: 'authRefresh');
-    }
-    return AppDependencies(
-      dataSource: sl<TaskboardDataSource>(),
-      authService: sl<AuthService>(),
-      authRefreshListenable: authRefresh,
-    );
+    return _appDependencies();
   }
 
   sl.registerSingleton<StorageService>(storageService);
@@ -153,9 +199,12 @@ Future<AppDependencies> configureDependencies(
   final useTaskboardApi = apiUrl.isNotEmpty ||
       (useApiProxy && kIsWeb && apiCfg != null);
 
+  final prefs = storageService.prefs;
+  if (prefs == null) {
+    throw StateError('StorageService.prefs no disponible');
+  }
+
   late TaskboardDataSource dataSource;
-  late AuthService authService;
-  Listenable? authRefreshListenable;
 
   if (useTaskboardApi) {
     if (useApiProxy && kIsWeb) {
@@ -164,48 +213,26 @@ Future<AppDependencies> configureDependencies(
       apiUrl = Uri.parse(Uri.base.origin).resolve(path).toString();
     }
 
-    final prefs = storageService.prefs;
-    if (prefs == null) {
-      throw StateError('StorageService.prefs no disponible');
-    }
-    final apiAuth = ApiAuthService(baseUrl: apiUrl, prefs: prefs);
-    await apiAuth.init();
-
+    _registerAuthStack(prefs, apiUrl: apiUrl);
     final client = TaskboardApiClient(
       baseUrl: apiUrl,
-      accessTokenProvider: () => apiAuth.accessToken,
+      tokenProvider: sl<AuthLocalDataSource>(),
     );
     AiAssistantService.configureApi(client);
 
     dataSource = ApiDataSource(client);
-    authService = apiAuth;
-    authRefreshListenable = apiAuth;
   } else {
-    final prefs = storageService.prefs;
-    if (prefs == null) {
-      throw StateError('StorageService.prefs no disponible');
-    }
+    _registerAuthStack(prefs);
     AiAssistantService.configureDisabled();
     dataSource = storageService;
-    authService = LocalAuthService(prefs);
-    authRefreshListenable = null;
   }
 
   sl.registerSingleton<TaskboardDataSource>(dataSource);
-  sl.registerSingleton<AuthService>(authService);
-  if (authRefreshListenable != null) {
-    sl.registerSingleton<Listenable>(
-      authRefreshListenable,
-      instanceName: 'authRefresh',
-    );
-  }
 
   _registerProjectsStack();
   _registerTasksStack();
 
-  return AppDependencies(
-    dataSource: dataSource,
-    authService: authService,
-    authRefreshListenable: authRefreshListenable,
-  );
+  await sl<RestoreSession>()(const NoParams());
+
+  return _appDependencies();
 }
