@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+
 /// Comprueba reglas de Clean Architecture en lib/features/**/domain y presentation.
 void main() {
   final libDir = Directory('lib/features');
@@ -61,8 +62,7 @@ void main() {
           continue;
         }
         if (trimmed.contains("import '") || trimmed.contains('import "')) {
-          if (trimmed.contains('/data/') &&
-              !trimmed.contains('core/di')) {
+          if (trimmed.contains('/data/') && !trimmed.contains('core/di')) {
             violations.add('$rel → $trimmed');
           }
         }
@@ -71,30 +71,32 @@ void main() {
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
-  test('screens y widgets no importan data ni usan sl<>', () {
+  test('lib/ solo tiene core, features, shared y main.dart', () {
+    final entries = Directory('lib')
+        .listSync()
+        .map((e) => e.uri.pathSegments.where((s) => s.isNotEmpty).last)
+        .toSet();
+    expect(
+      entries.difference({'core', 'features', 'shared', 'main.dart'}),
+      isEmpty,
+      reason:
+          'Las carpetas heredadas (blocs, models, services, screens, '
+          'widgets, utils) se eliminaron en CA-6; el código va en features/.',
+    );
+  });
+
+  test('core no importa features (salvo core/di)', () {
     final violations = <String>[];
-    for (final root in ['lib/screens', 'lib/widgets']) {
-      final dir = Directory(root);
-      if (!dir.existsSync()) {
+    for (final entity in Directory('lib/core').listSync(recursive: true)) {
+      if (entity is! File ||
+          !entity.path.endsWith('.dart') ||
+          entity.path.contains('/core/di/')) {
         continue;
       }
-      for (final entity in dir.listSync(recursive: true)) {
-        if (entity is! File || !entity.path.endsWith('.dart')) {
-          continue;
-        }
-        final lines = entity.readAsLinesSync();
-        for (final line in lines) {
-          final trimmed = line.trim();
-          if (trimmed.startsWith('//')) {
-          continue;
-        }
-          if ((trimmed.contains("import '") || trimmed.contains('import "')) &&
-              trimmed.contains('/data/')) {
-            violations.add('${entity.path} → $trimmed');
-          }
-          if (trimmed.contains('sl<')) {
-            violations.add('${entity.path} → $trimmed');
-          }
+      for (final line in entity.readAsLinesSync()) {
+        final trimmed = line.trim();
+        if (trimmed.startsWith('import ') && trimmed.contains('features/')) {
+          violations.add('${entity.path} → $trimmed');
         }
       }
     }

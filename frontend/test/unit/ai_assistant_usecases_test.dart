@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:personal_taskboard/core/error/failures.dart';
 import 'package:personal_taskboard/core/error/result.dart';
+import 'package:personal_taskboard/features/ai_assistant/domain/entities/agent_session.dart';
 import 'package:personal_taskboard/features/ai_assistant/domain/entities/ai_chat.dart';
 import 'package:personal_taskboard/features/ai_assistant/domain/entities/ai_task_suggestion.dart';
 import 'package:personal_taskboard/features/ai_assistant/domain/repositories/ai_assistant_repository.dart';
@@ -137,6 +138,49 @@ void main() {
       ),
     );
     expect(result.valueOrNull!.message, 'ok');
+  });
+
+  test('sesión agent: obtener, reiniciar, historial y stream', () async {
+    final session = AgentSession(
+      projectId: 3,
+      sessionId: 's1',
+      updatedAt: DateTime(2026, 1, 1),
+    );
+    when(
+      () => repo.getAgentSession(3),
+    ).thenAnswer((_) async => Success(session));
+    when(
+      () => repo.resetAgentSession(3),
+    ).thenAnswer((_) async => const Success(null));
+    when(() => repo.getAgentRuns(3)).thenAnswer((_) async => const Success([]));
+    when(
+      () => repo.streamAgentRun(
+        prompt: 'p',
+        projectId: 3,
+        projectTitle: 'P',
+        projectDescription: '',
+        execute: true,
+        continueSession: false,
+        newSession: true,
+      ),
+    ).thenAnswer(
+      (_) => Stream.value(const Success(AgentStreamEvent(kind: 'text'))),
+    );
+
+    expect((await GetAgentSession(repo)(3)).valueOrNull, session);
+    expect((await ResetAgentSession(repo)(3)).isSuccess, isTrue);
+    expect((await GetAgentRuns(repo)(3)).valueOrNull, isEmpty);
+    final events = await StreamAgentRun(repo)(
+      const StreamAgentRunParams(
+        prompt: 'p',
+        projectId: 3,
+        projectTitle: 'P',
+        execute: true,
+        continueSession: false,
+        newSession: true,
+      ),
+    ).toList();
+    expect(events.single.valueOrNull!.kind, 'text');
   });
 
   group('ApplyAiTaskSuggestions', () {
