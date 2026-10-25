@@ -1,17 +1,17 @@
 # Clean Architecture — cliente Flutter (TaskBoard)
 
-Documento de decisiones (ADR) para la migración del frontend `frontend/lib` hacia capas **domain**, **data** y **presentation**, sin cambiar el comportamiento visible de la app.
+Documento de decisiones (ADR) del frontend `frontend/lib`, organizado en capas **domain**, **data** y **presentation** por funcionalidad. La migración se hizo en las entregas CA-0…CA-6 sin cambiar el comportamiento visible de la app; este documento describe el estado final.
 
 ## Contexto
 
-El cliente usa BLoC, GoRouter, `json_serializable` y un `TaskboardDataSource` (local o API). Faltaban dominio (entidades, repositorios, casos de uso), DI centralizada y organización por funcionalidad.
+Antes de la migración el cliente usaba BLoC, GoRouter, modelos `json_serializable` en `lib/models` y un único `TaskboardDataSource` (local o API) en `lib/services`. Faltaban dominio (entidades, repositorios, casos de uso), DI centralizada y organización por funcionalidad. Tras CA-6 ya no quedan `lib/blocs`, `lib/models`, `lib/services`, `lib/screens`, `lib/widgets` ni `lib/utils`, y los modelos JSON son clases escritas a mano en `data/models/` de cada feature (sin generación de código).
 
 ## Capas
 
 | Capa | Responsabilidad | Puede importar |
 |------|-----------------|----------------|
 | **domain** | Entidades, contratos de repositorio, casos de uso (Dart puro) | Solo Dart estándar, `equatable` |
-| **data** | DTO (`*Model`), data sources, mappers, implementaciones de repositorio | domain, core (error, network, storage) |
+| **data** | DTO (`*Model`), data sources, mappers, implementaciones de repositorio | domain, core (config, error, network, storage) |
 | **presentation** | BLoC/Cubit, pantallas, widgets | domain, shared, flutter |
 
 **Regla de dependencias:** `presentation → domain ← data`. Presentation **no** importa `data/` (excepción: wiring en `core/di`).
@@ -21,40 +21,67 @@ El cliente usa BLoC, GoRouter, `json_serializable` y un `TaskboardDataSource` (l
 ```
 lib/
   core/
+    config/         # AppConfig (assets/data/config.json), WorkspaceRemoteSettings
     di/injection.dart
-    error/          # Result, Failure, excepciones de data
-    usecase/
-    network/        # TaskboardApiClient
-    storage/        # StorageService
+    error/          # Result, Failure, excepciones de data y su traducción
+    network/        # TaskboardApiClient, TokenProvider, api_response (HTTP → excepción)
+    storage/        # StorageService (JSON local del modo sin API)
+    usecase/        # UseCase<T, P>, NoParams
   features/
+    ai_assistant/
     auth/
     projects/
     tasks/
-    ai_assistant/
   shared/
-    router/
+    router/         # AppRouter (GoRouter)
     themes/
-    ui/
-    widgets/        # widgets transversales (fase de migración)
+    ui/             # kRootScaffoldMessenger
+    utils/          # fastApiDetailFromErrorString
   main.dart
 ```
+
+`test/architecture/dependency_rule_test.dart` comprueba que `lib/` solo contiene `core`, `features`, `shared` y `main.dart`.
 
 Cada feature:
 
 ```
 features/<feature>/
-  domain/{entities,repositories,usecases}/
-  data/{models,datasources,repositories}/
-  presentation/{bloc,screens,widgets}/
+  domain/
+    entities/
+    repositories/   # contratos
+    usecases/       # un caso de uso por fichero + barrel <feature>_usecases.dart
+    services/       # (opcional) reglas puras de dominio, p. ej. ai_task_conversion
+  data/
+    models/         # *Model: JSON del API (fromApiJson) y del almacenamiento local (fromJson)
+    datasources/    # contrato + implementaciones API / local
+    repositories/   # *RepositoryImpl → Result<T>
+  presentation/
+    bloc/           # BLoC o Cubit
+    screens/
+    widgets/
+    utils/          # (opcional) ayudas de UI, p. ej. mensajes de error
 ```
 
-Features: `auth`, `projects`, `tasks`, `ai_assistant`.
+| Feature | Entidades | Casos de uso |
+|---|---|---|
+| `auth` | `AuthUser` | `Login`, `Logout`, `RestoreSession`, `ChangePassword` |
+| `tasks` | `Task`, `Subtask`, `TaskStatus`, `TaskComplexity` | `GetTasksByProject`, `CreateTask`, `UpdateTask`, `UpdateTaskStatus`, `MoveTask`, `DeleteTask` |
+| `projects` | `Project`, `ProjectMember`, `AppUser`, `WorkspaceSuggestion`, `WorkspaceInventory`, `IdePrompt`… | 19: proyectos (`GetProjects`, `GetProject`, `CreateProject`, `UpdateProject`, `UpdateProjectStatus`, `DeleteProject`), miembros (`GetProjectMembers`, `GetRegisteredUsers`, `AddProjectMember`, `UpdateProjectMemberRole`, `RemoveProjectMember`), workspace (`PreviewWorkspaceSnapshot`, `SyncProjectWorkspace`, `GetWorkspaceSuggestions`, `ApplyWorkspaceSuggestion`, `DismissWorkspaceSuggestion`, `GetWorkspaceInventory`, `ExportTaskboardMd`) e IDE (`PrepareIdeSession`) |
+| `ai_assistant` | `AiTaskSuggestion`, `AiChatMessage`, `AiChatReply`, `AiSuggestionResult`, `AgentSession`, `AgentRun`, `AgentStreamEvent` | `SuggestTasks`, `SuggestProjectPlan`, `SendProjectChatMessage`, `ApplyAiTaskSuggestions`, `StreamAgentRun`, `GetAgentSession`, `ResetAgentSession`, `GetAgentRuns` |
 
 ## Errores
 
 - **`Result<T>`** en `core/error/result.dart`: `Success<T>` o `ResultFailure<T>` (envuelve `Failure`).
 - **`Failure`**: `NetworkFailure`, `UnauthorizedFailure`, `NotFoundFailure`, `ServerFailure`, `ValidationFailure` (reglas de entrada de un caso de uso), `UnexpectedFailure`.
 - Excepciones en **data** (`ServerException`, …); los repositorios las traducen a `Failure` con `mapExceptionToFailure`.
+
+## Datos: API y modo local
+
+- La app funciona contra el API TaskBoard o, si no hay API configurada, en **modo local** (SharedPreferences). La elección se hace una vez en `configureDependencies`.
+- `tasks` y `projects` tienen un contrato de data source (`TasksDataSource`, `ProjectsDataSource`) con dos implementaciones: `*ApiDataSource` (sobre `TaskboardApiClient`) y `*LocalDataSource` (sobre `StorageService`). Los repositorios no saben cuál reciben.
+- `StorageService` solo guarda colecciones JSON (`projects`, `tasks`) dentro de la clave `app_data`, con el mismo formato que usaba la versión anterior; cada feature lee y escribe sus mapas con su `*Model`. Borrar un proyecto en local borra también sus tareas.
+- `core/network/api_response.dart` traduce las respuestas HTTP a excepciones de data (401 → `UnauthorizedException`, 403 → `ServerException` con «Permiso denegado», 404 → `NotFoundException`, resto → `ServerException` con código y cuerpo) y `guardApiCall` envuelve los errores de red con la operación.
+- `auth` y `ai_assistant` usan el mismo criterio: sin API, el repositorio se registra sin data source remoto (sesión de demostración y asistente desactivado).
 
 ## Casos de uso
 
@@ -86,8 +113,10 @@ Features: `auth`, `projects`, `tasks`, `ai_assistant`.
 
 ## Tests
 
-- **mocktail** en tests nuevos; **bloc_test** para BLoC.
-- `test/architecture/dependency_rule_test.dart`: domain sin Flutter/HTTP/JSON; presentation sin imports de `data/`.
+- **mocktail** y **bloc_test**; los data sources del API se prueban con `MockClient` de `package:http/testing.dart` (`TaskboardApiClient` acepta un `httpClient`).
+- `test/architecture/dependency_rule_test.dart`: domain sin Flutter/HTTP/JSON ni otras capas; presentation sin imports de `data/`; `lib/` solo con `core`, `features`, `shared` y `main.dart`; `core` sin imports de features (salvo `core/di`).
+- Verificación local y en CI: `scripts/flutter-check.sh` (analyze + test; con `--vs-main` o `--base`, sin avisos nuevos respecto a la base). El CI ejecuta además `flutter test --coverage` y publica la cobertura por capa con `scripts/coverage_by_layer.py`.
+- Cobertura al cerrar CA-6 (2026-10-25, 134 tests): domain 84,4 %, data 62,5 %, presentation 65,6 %, core 53,1 %. Solo cuenta los ficheros que cargan los tests, así que en presentation la cifra es optimista.
 
 ## Migración (strangler)
 
@@ -101,7 +130,7 @@ Features: `auth`, `projects`, `tasks`, `ai_assistant`.
 | CA-5 | Feature **ai_assistant** |
 | CA-6 | Limpieza, CI Flutter, docs finales |
 
-Cada entrega: `flutter analyze` y `flutter test` en verde; PR independiente.
+Cada entrega: `flutter analyze` y `flutter test` en verde; PR independiente. Todas fusionadas (CA-6 en octubre de 2026).
 
 ## Convenciones de nombres
 
@@ -150,7 +179,7 @@ sequenceDiagram
   participant B as TasksBloc
   participant U as GetTasksByProject
   participant R as TasksRepository
-  participant D as TasksRemoteDataSource
+  participant D as TasksApiDataSource
   participant A as API
   S->>B: evento Load
   B->>U: call(projectId)
@@ -166,9 +195,12 @@ sequenceDiagram
 
 ## Añadir una feature nueva
 
-1. Crear entidades y repositorio abstracto en `domain/`.
-2. DTO, data source e implementación del repositorio en `data/`.
-3. Casos de uso (uno por acción de UI).
-4. BLoC y pantallas en `presentation/`.
-5. Registrar en `configureDependencies`.
-6. Tests de caso de uso, repositorio y BLoC; verificar `dependency_rule_test`.
+Toma `features/tasks/` como referencia.
+
+1. **Dominio** (`features/<f>/domain/`): entidades con `Equatable`, contrato del repositorio que devuelve `Future<Result<T>>` y un caso de uso por acción de la UI (`UseCase<T, P>`, verbo + entidad), exportados en `<f>_usecases.dart`. Nada de Flutter, HTTP ni JSON.
+2. **Datos** (`features/<f>/data/`): `*Model` con `fromApiJson`/`toApiJson` (y `fromJson`/`toJson` si hay modo local), contrato del data source con sus implementaciones (`*ApiDataSource` usando `ensureSuccess` y `guardApiCall`; `*LocalDataSource` sobre `StorageService` si la feature funciona sin API) y `*RepositoryImpl`, que captura excepciones y devuelve `ResultFailure(mapExceptionToFailure(e))`.
+3. **Presentación** (`features/<f>/presentation/`): BLoC o Cubit que recibe los casos de uso por constructor; pantallas y widgets que solo hablan con él. Un BLoC global se crea en `main.dart`; uno por pantalla con `BlocProvider(create: (_) => sl<…>())`.
+4. **DI** (`core/di/injection.dart`): una función `_register<F>Stack` con `registerLazySingleton` para data sources, repositorio y casos de uso, y `registerFactory` para el BLoC; elegir la implementación API o local según haya `TaskboardApiClient`.
+5. **Rutas**: si hay pantallas nuevas, añadirlas en `shared/router/app_router.dart`.
+6. **Tests** (`test/unit/`): casos de uso con el repositorio simulado, repositorio con el data source simulado, data source del API con `MockClient`, modelos y BLoC con `bloc_test`.
+7. **Verificar**: `scripts/flutter-check.sh --vs-main` (tests en verde, ningún aviso nuevo; incluye el test de arquitectura).

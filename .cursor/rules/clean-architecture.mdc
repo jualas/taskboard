@@ -28,17 +28,17 @@ Regla propia de este repo (no viene del hub Skills-Rules). Decisiones completas 
 - **DI**: `registerLazySingleton` para data sources, repositorios y casos de uso; `registerFactory` para BLoCs. Los widgets no usan `sl<...>()` para casos de uso: los recibe el BLoC por constructor y la pantalla obtiene el BLoC con `BlocProvider`.
 - **Servicios** (`AiAssistantService`, etc.): no se instancian con `new` dentro de widgets; se registran en DI y se acceden a través de un repositorio/caso de uso de su feature.
 
-## Migración en curso (strangler)
+## Estructura
 
-- Features migradas: `tasks`, `projects`, `auth`, `ai_assistant`. Queda la limpieza de CA-6 (ver tabla CA-0…CA-6 del ADR y tareas CA-* en TaskBoard).
-- Código heredado en `lib/screens`, `lib/widgets`, `lib/blocs`, `lib/services`, `lib/models`: no se añade código nuevo ahí. Lo que se toque de una feature ya migrada se mueve a `features/<f>/presentation/`.
-- Cada entrega CA-x: commits pequeños en la rama de la entrega, `flutter analyze` sin avisos nuevos respecto a `main` y `flutter test` en verde antes de marcar la tarea como completada.
+- `lib/` solo tiene `core/`, `features/` (`ai_assistant`, `auth`, `projects`, `tasks`), `shared/` y `main.dart`; el test de arquitectura falla si aparece otra carpeta. La migración CA-0…CA-6 terminó y ya no hay código heredado.
+- `tasks` y `projects` tienen un data source del API y otro local (modo sin API); la elección se hace en DI. Una feature nueva que deba funcionar sin API sigue el mismo patrón.
+- Cada cambio: `scripts/flutter-check.sh --vs-main` sin avisos nuevos y tests en verde.
 
 ## Tests mínimos por feature
 
 - Casos de uso (mocktail sobre el repositorio abstracto).
 - `*RepositoryImpl` (data source simulado; éxito y traducción de errores a `Failure`).
-- Mappers DTO ↔ entidad.
+- Mappers DTO ↔ entidad y data source del API con `MockClient`.
 - BLoC con `bloc_test`.
 
 ## Añadir una feature
