@@ -26,6 +26,32 @@ class ProjectModel {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// Formato del API (snake_case).
+  factory ProjectModel.fromApiJson(Map<String, dynamic> m) {
+    final owner = m['owner_id']?.toString();
+    return ProjectModel.fromJson({
+      'id': m['id'],
+      'title': m['title'],
+      'description': m['description'],
+      'status': m['status'],
+      'ownerId': owner == null || owner.isEmpty ? null : owner,
+      'currentUserRole': m['current_user_role'],
+      'workspacePath': m['workspace_path'],
+      'pendingWorkspaceSuggestions': m['pending_workspace_suggestions'],
+      'createdAt': m['created_at'],
+      'updatedAt': m['updated_at'],
+    });
+  }
+
+  /// Cuerpo de `POST /api/projects` y `PATCH /api/projects/{id}`.
+  Map<String, dynamic> toApiJson() => {
+        'title': title,
+        'description': description,
+        'status': status.dbValue,
+        'workspace_path': workspacePath,
+      };
+
+  /// Formato local (camelCase).
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
     final roleRaw = json['currentUserRole'] as String?;
     return ProjectModel(

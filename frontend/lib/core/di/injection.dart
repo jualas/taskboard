@@ -14,33 +14,32 @@ import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/auth_usecases.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
-import '../../features/projects/data/datasources/projects_remote_data_source.dart';
+import '../../features/projects/data/datasources/projects_api_data_source.dart';
+import '../../features/projects/data/datasources/projects_data_source.dart';
+import '../../features/projects/data/datasources/projects_local_data_source.dart';
 import '../../features/projects/data/repositories/projects_repository_impl.dart';
 import '../../features/projects/domain/repositories/projects_repository.dart';
 import '../../features/projects/domain/usecases/projects_usecases.dart';
 import '../../features/projects/presentation/bloc/projects_bloc.dart';
-import '../../features/tasks/data/datasources/tasks_remote_data_source.dart';
+import '../../features/tasks/data/datasources/tasks_api_data_source.dart';
+import '../../features/tasks/data/datasources/tasks_data_source.dart';
+import '../../features/tasks/data/datasources/tasks_local_data_source.dart';
 import '../../features/tasks/data/repositories/tasks_repository_impl.dart';
 import '../../features/tasks/domain/repositories/tasks_repository.dart';
 import '../../features/tasks/domain/usecases/tasks_usecases.dart';
 import '../../features/tasks/presentation/bloc/tasks_bloc.dart';
-import '../../services/api/api_data_source.dart';
-import '../../utils/workspace_remote_settings.dart';
 import '../network/taskboard_api_client.dart';
 import '../storage/storage_service.dart';
+import '../config/workspace_remote_settings.dart';
 import '../usecase/usecase.dart';
-import '../../services/taskboard_data_source.dart';
 
 final sl = GetIt.instance;
 
 class AppDependencies {
   const AppDependencies({
-    required this.dataSource,
     required this.isAuthenticated,
     required this.authChanges,
   });
-
-  final TaskboardDataSource dataSource;
 
   /// Para el redirect del router (síncrono).
   final bool Function() isAuthenticated;
@@ -52,7 +51,6 @@ class AppDependencies {
 AppDependencies _appDependencies() {
   final auth = sl<AuthRepository>();
   return AppDependencies(
-    dataSource: sl<TaskboardDataSource>(),
     isAuthenticated: () => auth.currentUser != null,
     authChanges: auth.sessionChanges,
   );
@@ -95,12 +93,15 @@ void _registerAuthStack(SharedPreferences prefs, {String? apiUrl}) {
   );
 }
 
-void _registerProjectsStack() {
-  sl.registerLazySingleton<ProjectsRemoteDataSource>(
-    () => ProjectsRemoteDataSourceImpl(sl<TaskboardDataSource>()),
+/// Sin [client] (no hay API Taskboard) proyectos y tareas se guardan en local.
+void _registerProjectsStack({TaskboardApiClient? client}) {
+  sl.registerLazySingleton<ProjectsDataSource>(
+    () => client != null
+        ? ProjectsApiDataSource(client)
+        : ProjectsLocalDataSource(sl<StorageService>()),
   );
   sl.registerLazySingleton<ProjectsRepository>(
-    () => ProjectsRepositoryImpl(sl<ProjectsRemoteDataSource>()),
+    () => ProjectsRepositoryImpl(sl<ProjectsDataSource>()),
   );
   ProjectsRepository repo() => sl<ProjectsRepository>();
   sl.registerLazySingleton(() => GetProjects(repo()));
@@ -147,12 +148,14 @@ void _registerProjectsStack() {
   );
 }
 
-void _registerTasksStack() {
-  sl.registerLazySingleton<TasksRemoteDataSource>(
-    () => TasksRemoteDataSourceImpl(sl<TaskboardDataSource>()),
+void _registerTasksStack({TaskboardApiClient? client}) {
+  sl.registerLazySingleton<TasksDataSource>(
+    () => client != null
+        ? TasksApiDataSource(client)
+        : TasksLocalDataSource(sl<StorageService>()),
   );
   sl.registerLazySingleton<TasksRepository>(
-    () => TasksRepositoryImpl(sl<TasksRemoteDataSource>()),
+    () => TasksRepositoryImpl(sl<TasksDataSource>()),
   );
   sl.registerLazySingleton(() => GetTasksByProject(sl<TasksRepository>()));
   sl.registerLazySingleton(() => CreateTask(sl<TasksRepository>()));
@@ -217,7 +220,7 @@ void _registerAiAssistantStack({TaskboardApiClient? client}) {
 Future<AppDependencies> configureDependencies(
   StorageService storageService,
 ) async {
-  if (sl.isRegistered<TaskboardDataSource>()) {
+  if (sl.isRegistered<StorageService>()) {
     return _appDependencies();
   }
 
@@ -251,7 +254,6 @@ Future<AppDependencies> configureDependencies(
     throw StateError('StorageService.prefs no disponible');
   }
 
-  late TaskboardDataSource dataSource;
   TaskboardApiClient? apiClient;
 
   if (useTaskboardApi) {
@@ -267,16 +269,12 @@ Future<AppDependencies> configureDependencies(
       tokenProvider: sl<AuthLocalDataSource>(),
     );
     apiClient = client;
-    dataSource = ApiDataSource(client);
   } else {
     _registerAuthStack(prefs);
-    dataSource = storageService;
   }
 
-  sl.registerSingleton<TaskboardDataSource>(dataSource);
-
-  _registerProjectsStack();
-  _registerTasksStack();
+  _registerProjectsStack(client: apiClient);
+  _registerTasksStack(client: apiClient);
   _registerAiAssistantStack(client: apiClient);
 
   await sl<RestoreSession>()(const NoParams());

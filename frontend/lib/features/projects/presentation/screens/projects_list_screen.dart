@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../blocs/blocs.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../bloc/projects_bloc.dart';
 import '../../../../core/error/result_extensions.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../../auth/domain/usecases/change_password.dart';
@@ -14,7 +15,7 @@ import '../../../../shared/themes/app_theme.dart';
 import '../widgets/workspace_suggestions_sheet.dart';
 import '../widgets/workspace_inventory_sheet.dart';
 import '../widgets/open_in_cursor_button.dart';
-import '../../../../utils/export_taskboard_md.dart';
+import '../utils/export_taskboard_md_action.dart';
 import '../widgets/ide_cursor_session_sheet.dart';
 
 class ProjectsListScreen extends StatefulWidget {

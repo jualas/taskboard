@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../blocs/blocs.dart';
+import '../bloc/projects_bloc.dart';
 import '../../../../shared/themes/app_theme.dart';
 
 /// Título de AppBar con nombre del proyecto y etiqueta de la vista (Kanban, lista…).
