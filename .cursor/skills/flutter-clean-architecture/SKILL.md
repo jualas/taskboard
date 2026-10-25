@@ -19,8 +19,7 @@ Fuente de verdad: `docs/architecture/clean-architecture.md` (ADR). Resumen siemp
 1. Identificar la feature (`tasks`, `projects`, `auth`, `ai_assistant`) y la entrega CA-x a la que pertenece el cambio (tabla del ADR y tareas CA-* del proyecto 10 en TaskBoard).
 2. Usar `features/tasks/` como referencia de estructura y estilo.
 3. Si el fichero a tocar está en código heredado (`lib/screens`, `lib/widgets`, `lib/blocs`, `lib/services`, `lib/models`):
-   - Feature ya migrada (`tasks`, `projects`): moverlo a `features/<f>/presentation/` en el mismo cambio (`git mv`, para conservar historial).
-   - Feature pendiente (`auth`, `ai_assistant`): cambio mínimo en el sitio y anotarlo como deuda de su CA-x. **Nunca** crear ficheros nuevos ahí.
+   - Todas las features están migradas: moverlo a `features/<f>/` en el mismo cambio (`git mv`, para conservar historial). **Nunca** crear ficheros nuevos en carpetas heredadas.
 
 ## 2. Dónde va cada cosa
 
@@ -79,10 +78,10 @@ Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stab
 
 ## 7. Deuda conocida (revisar y actualizar al cerrar cada CA-x)
 
-Estado de `main` a 2026-10-24 (tras los PR #17 y #22, CA-0…CA-4 fusionadas):
+Estado de `main` a 2026-10-25 (CA-0…CA-5 fusionadas):
 
 - `ProjectsRemoteDataSource` y `TasksRemoteDataSource` siguen adaptando los modelos de `lib/models/` a través de `TaskboardDataSource`. El borrado de `models/task.dart` (de CA-2) y de los modelos de projects (de CA-3) se trasladó a CA-6.
-- `AiAssistantService` usado directamente desde `features/projects/presentation/screens/projects_list_screen.dart`, `features/tasks/presentation/screens/task_form.dart` y `lib/widgets/project_ai_chat_panel.dart` → CA-5.
+- `ProjectAiChatPanel` conserva el modo `create` (plan de un proyecto nuevo), que ninguna pantalla abre. Decidir en CA-6 si se borra junto con `SuggestProjectPlan`.
 - Borrado final de `lib/blocs`, `lib/models`, `lib/services` → CA-6.
 
 Al resolver un punto, quitarlo de esta lista en el mismo commit.

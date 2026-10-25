@@ -69,6 +69,15 @@ Features: `auth`, `projects`, `tasks`, `ai_assistant`.
 - El router necesita una comprobación síncrona: recibe `isAuthenticated` y el stream `sessionChanges` del repositorio desde `AppDependencies`, no el repositorio.
 - El diálogo de cambio de contraseña espera el resultado, así que usa el caso de uso `ChangePassword` expuesto por `AuthBloc` (mismo patrón que `TasksBloc.createTask`).
 
+## Asistente IA (ai_assistant)
+
+- Sin API Taskboard configurada, `AiAssistantRepositoryImpl` se registra sin data source remoto: las consultas devuelven un `Failure` con el aviso de configuración y la sesión agent queda vacía.
+- El repositorio conserva el texto original del error (código HTTP y cuerpo, `TimeoutException`, `ClientException`) en el `Failure`, porque `describeAiFailure` (`presentation/utils/`) elige el mensaje para el usuario a partir de él.
+- El stream de Cursor Agent se expone como `Stream<Result<AgentStreamEvent>>`: un error llega como un último `ResultFailure`, no como excepción. `StreamAgentRun` no implementa `UseCase` porque no devuelve un `Future`.
+- Las reglas puras que comparan el borrador de la IA con las tareas del proyecto están en `domain/services/ai_task_conversion.dart`; `ApplyAiTaskSuggestions` las usa y crea las tareas con el caso de uso `CreateTask` de tasks.
+- El título y la descripción del proyecto viajan siempre en `projectContext`, como datos separados del mensaje del usuario.
+- Los Cubits son por pantalla: `ProjectAiChatPanel` y `TaskForm` crean el suyo con `BlocProvider(create: (_) => sl<…>())`. Las acciones cuyo resultado muestra la UI en un aviso (`resetAgentSession`, `applyNewTasks`) devuelven el `Result`.
+
 ## Inyección de dependencias
 
 - **get_it** en `core/di/injection.dart`.
