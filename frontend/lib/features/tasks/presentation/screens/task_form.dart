@@ -1,22 +1,15 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/task.dart';
-import '../../../../utils/ai_task_conversion.dart';
-import '../../../../services/services.dart';
+import '../../../../core/di/injection.dart';
+import '../../../ai_assistant/domain/services/ai_task_conversion.dart';
+import '../../../ai_assistant/presentation/bloc/task_ai_suggestion_cubit.dart';
 import '../../../../shared/themes/app_theme.dart';
 import '../../../../shared/ui/root_scaffold_messenger.dart';
 
-class TaskForm extends StatefulWidget {
-  final int projectId;
-  /// Título del proyecto (para contexto de la IA al sugerir tarea).
-  final String projectTitleForAi;
-  /// Descripción del proyecto (para contexto de la IA).
-  final String projectDescriptionForAi;
-  final Task? task;
-  final void Function(Task task) onSave;
-  /// En edición: guarda checklist (y el resto del formulario actual) en servidor al marcar subtareas.
-  final void Function(Task task)? onPersistChecklist;
-
+/// Formulario de tarea con su propio [TaskAiSuggestionCubit] para «Sugerir con IA».
+class TaskForm extends StatelessWidget {
   const TaskForm({
     super.key,
     required this.projectId,
@@ -27,13 +20,55 @@ class TaskForm extends StatefulWidget {
     this.onPersistChecklist,
   });
 
+  final int projectId;
+  /// Título del proyecto (para contexto de la IA al sugerir tarea).
+  final String projectTitleForAi;
+  /// Descripción del proyecto (para contexto de la IA).
+  final String projectDescriptionForAi;
+  final Task? task;
+  final void Function(Task task) onSave;
+  /// En edición: guarda checklist (y el resto del formulario actual) en servidor al marcar subtareas.
+  final void Function(Task task)? onPersistChecklist;
+
   @override
-  State<TaskForm> createState() => _TaskFormState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<TaskAiSuggestionCubit>(),
+      child: _TaskFormBody(
+        projectId: projectId,
+        projectTitleForAi: projectTitleForAi,
+        projectDescriptionForAi: projectDescriptionForAi,
+        task: task,
+        onSave: onSave,
+        onPersistChecklist: onPersistChecklist,
+      ),
+    );
+  }
 }
 
-class _TaskFormState extends State<TaskForm> {
+class _TaskFormBody extends StatefulWidget {
+  final int projectId;
+  final String projectTitleForAi;
+  final String projectDescriptionForAi;
+  final Task? task;
+  final void Function(Task task) onSave;
+  final void Function(Task task)? onPersistChecklist;
+
+  const _TaskFormBody({
+    required this.projectId,
+    required this.projectTitleForAi,
+    required this.projectDescriptionForAi,
+    required this.task,
+    required this.onSave,
+    required this.onPersistChecklist,
+  });
+
+  @override
+  State<_TaskFormBody> createState() => _TaskFormState();
+}
+
+class _TaskFormState extends State<_TaskFormBody> {
   final _formKey = GlobalKey<FormState>();
-  final _aiAssistant = AiAssistantService();
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late TextEditingController _estimatedHoursController;
@@ -367,6 +402,7 @@ class _TaskFormState extends State<TaskForm> {
   }
 
   Future<void> _suggestWithAi() async {
+    final aiCubit = context.read<TaskAiSuggestionCubit>();
     final controller = TextEditingController(
       text: _descriptionController.text.trim().isNotEmpty
           ? _descriptionController.text.trim()
@@ -435,15 +471,34 @@ class _TaskFormState extends State<TaskForm> {
           ? widget.projectTitleForAi.trim()
           : 'Proyecto ${widget.projectId}';
       final projectDesc = widget.projectDescriptionForAi.trim();
-      final aiResult = await _aiAssistant.suggestTasks(
-        userMessage: brief,
+      await aiCubit.suggest(
+        brief: brief,
         projectTitle: projectTitle,
         projectDescription: projectDesc,
       );
-      final suggestions = aiResult.suggestions;
+      final aiState = aiCubit.state;
 
       if (!mounted) return;
-      if (suggestions.isEmpty) {
+      if (aiState.status == TaskAiSuggestionStatus.failure) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Error al generar con IA'),
+            content: SingleChildScrollView(
+              child: Text(aiState.errorMessage ?? ''),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+      final suggestion = aiState.suggestion;
+      if (suggestion == null) {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -464,51 +519,23 @@ class _TaskFormState extends State<TaskForm> {
         return;
       }
 
-      final suggestion = suggestions.first;
       setState(() {
         _titleController.text = suggestion.title;
         _descriptionController.text = suggestion.description;
-        _complexity = domainComplexityFromLegacy(suggestion.complexity);
+        _complexity = suggestion.complexity;
         _estimatedHoursController.text =
             suggestion.estimatedHours?.toString() ?? '';
         _tagsController.text = suggestion.tags.join(', ');
-        _subtasks = suggestion.subtasks
-            .asMap()
-            .entries
-            .map(
-              (entry) => Subtask(
-                id: entry.key + 1,
-                title: entry.value,
-                isDone: false,
-              ),
-            )
-            .toList();
+        _subtasks = subtasksFromAiSuggestion(suggestion);
       });
       _notifyChecklistPersist();
 
       kRootScaffoldMessenger.currentState?.showSnackBar(
         SnackBar(
           content: Text(
-            'Sugerencia aplicada (${aiResult.providerLabel}).',
+            'Sugerencia aplicada (${aiState.providerLabel}).',
           ),
           duration: const Duration(seconds: 4),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Error al generar con IA'),
-          content: SingleChildScrollView(
-            child: Text(AiAssistantService.describeErrorForUser(e)),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cerrar'),
-            ),
-          ],
         ),
       );
     } finally {
