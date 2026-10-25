@@ -1,5 +1,7 @@
+import 'package:equatable/equatable.dart';
+
 /// Sesión Cursor Agent persistida por proyecto.
-class AgentSession {
+class AgentSession extends Equatable {
   const AgentSession({
     required this.projectId,
     required this.sessionId,
@@ -12,21 +14,15 @@ class AgentSession {
   final String workspacePath;
   final DateTime updatedAt;
 
-  factory AgentSession.fromJson(Map<String, dynamic> json) {
-    return AgentSession(
-      projectId: (json['project_id'] as num).toInt(),
-      sessionId: json['session_id'] as String? ?? '',
-      workspacePath: json['workspace_path'] as String? ?? '',
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-    );
-  }
-
   String get shortId =>
       sessionId.length > 8 ? sessionId.substring(0, 8) : sessionId;
+
+  @override
+  List<Object?> get props => [projectId, sessionId, workspacePath, updatedAt];
 }
 
 /// Entrada del historial de ejecuciones agent.
-class AgentRun {
+class AgentRun extends Equatable {
   const AgentRun({
     required this.id,
     required this.projectId,
@@ -47,16 +43,27 @@ class AgentRun {
   final bool isError;
   final DateTime createdAt;
 
-  factory AgentRun.fromJson(Map<String, dynamic> json) {
-    return AgentRun(
-      id: (json['id'] as num).toInt(),
-      projectId: (json['project_id'] as num).toInt(),
-      sessionId: json['session_id'] as String?,
-      prompt: json['prompt'] as String? ?? '',
-      executeMode: json['execute_mode'] as bool? ?? false,
-      resultPreview: json['result_preview'] as String? ?? '',
-      isError: json['is_error'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
-    );
-  }
+  @override
+  List<Object?> get props => [
+    id,
+    projectId,
+    sessionId,
+    prompt,
+    executeMode,
+    resultPreview,
+    isError,
+    createdAt,
+  ];
+}
+
+/// Evento del stream SSE del CLI Cursor Agent.
+class AgentStreamEvent extends Equatable {
+  const AgentStreamEvent({required this.kind, this.text = '', this.sessionId});
+
+  final String kind;
+  final String text;
+  final String? sessionId;
+
+  @override
+  List<Object?> get props => [kind, text, sessionId];
 }

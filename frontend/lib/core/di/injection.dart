@@ -2,6 +2,12 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/ai_assistant/data/datasources/ai_assistant_remote_data_source.dart';
+import '../../features/ai_assistant/data/repositories/ai_assistant_repository_impl.dart';
+import '../../features/ai_assistant/domain/repositories/ai_assistant_repository.dart';
+import '../../features/ai_assistant/domain/usecases/ai_assistant_usecases.dart';
+import '../../features/ai_assistant/presentation/bloc/project_ai_chat_cubit.dart';
+import '../../features/ai_assistant/presentation/bloc/task_ai_suggestion_cubit.dart';
 import '../../features/auth/data/datasources/auth_local_data_source.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
@@ -18,7 +24,6 @@ import '../../features/tasks/data/repositories/tasks_repository_impl.dart';
 import '../../features/tasks/domain/repositories/tasks_repository.dart';
 import '../../features/tasks/domain/usecases/tasks_usecases.dart';
 import '../../features/tasks/presentation/bloc/tasks_bloc.dart';
-import '../../services/ai_assistant_service.dart';
 import '../../services/api/api_data_source.dart';
 import '../../utils/workspace_remote_settings.dart';
 import '../network/taskboard_api_client.dart';
@@ -167,6 +172,48 @@ void _registerTasksStack() {
   );
 }
 
+/// Sin [client] (no hay API Taskboard) el asistente queda desactivado.
+void _registerAiAssistantStack({TaskboardApiClient? client}) {
+  if (client != null) {
+    sl.registerLazySingleton<AiAssistantRemoteDataSource>(
+      () => AiAssistantRemoteDataSourceImpl(client),
+    );
+  }
+  sl.registerLazySingleton<AiAssistantRepository>(
+    () => AiAssistantRepositoryImpl(
+      remote: client != null ? sl<AiAssistantRemoteDataSource>() : null,
+    ),
+  );
+  sl.registerLazySingleton(() => SuggestTasks(sl<AiAssistantRepository>()));
+  sl.registerLazySingleton(
+    () => SuggestProjectPlan(sl<AiAssistantRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => SendProjectChatMessage(sl<AiAssistantRepository>()),
+  );
+  sl.registerLazySingleton(() => StreamAgentRun(sl<AiAssistantRepository>()));
+  sl.registerLazySingleton(() => GetAgentSession(sl<AiAssistantRepository>()));
+  sl.registerLazySingleton(
+    () => ResetAgentSession(sl<AiAssistantRepository>()),
+  );
+  sl.registerLazySingleton(() => GetAgentRuns(sl<AiAssistantRepository>()));
+  sl.registerLazySingleton(() => ApplyAiTaskSuggestions(sl<CreateTask>()));
+  sl.registerFactory(
+    () => TaskAiSuggestionCubit(suggestTasks: sl<SuggestTasks>()),
+  );
+  sl.registerFactory(
+    () => ProjectAiChatCubit(
+      suggestProjectPlan: sl<SuggestProjectPlan>(),
+      sendProjectChatMessage: sl<SendProjectChatMessage>(),
+      streamAgentRun: sl<StreamAgentRun>(),
+      getAgentSession: sl<GetAgentSession>(),
+      resetAgentSession: sl<ResetAgentSession>(),
+      getAgentRuns: sl<GetAgentRuns>(),
+      applyAiTaskSuggestions: sl<ApplyAiTaskSuggestions>(),
+    ),
+  );
+}
+
 Future<AppDependencies> configureDependencies(
   StorageService storageService,
 ) async {
@@ -205,6 +252,7 @@ Future<AppDependencies> configureDependencies(
   }
 
   late TaskboardDataSource dataSource;
+  TaskboardApiClient? apiClient;
 
   if (useTaskboardApi) {
     if (useApiProxy && kIsWeb) {
@@ -218,12 +266,10 @@ Future<AppDependencies> configureDependencies(
       baseUrl: apiUrl,
       tokenProvider: sl<AuthLocalDataSource>(),
     );
-    AiAssistantService.configureApi(client);
-
+    apiClient = client;
     dataSource = ApiDataSource(client);
   } else {
     _registerAuthStack(prefs);
-    AiAssistantService.configureDisabled();
     dataSource = storageService;
   }
 
@@ -231,6 +277,7 @@ Future<AppDependencies> configureDependencies(
 
   _registerProjectsStack();
   _registerTasksStack();
+  _registerAiAssistantStack(client: apiClient);
 
   await sl<RestoreSession>()(const NoParams());
 

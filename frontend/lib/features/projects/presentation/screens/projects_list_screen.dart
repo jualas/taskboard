@@ -9,7 +9,7 @@ import '../../domain/entities/project.dart';
 import '../../domain/entities/project_member.dart';
 import '../../domain/entities/workspace.dart';
 import '../../domain/usecases/projects_usecases.dart';
-import '../../../../services/ai_assistant_service.dart';
+import '../../../../shared/utils/api_error_detail.dart';
 import '../../../../shared/themes/app_theme.dart';
 import '../widgets/workspace_suggestions_sheet.dart';
 import '../widgets/workspace_inventory_sheet.dart';
@@ -716,7 +716,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
         });
       } catch (e) {
         if (!context.mounted) return;
-        final detail = AiAssistantService.fastApiDetailFromErrorString(e.toString());
+        final detail = fastApiDetailFromErrorString(e.toString());
         setDialogState(() {
           workspacePreview = detail ?? e.toString();
         });
