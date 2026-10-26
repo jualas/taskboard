@@ -201,6 +201,12 @@ void _registerAiAssistantStack({TaskboardApiClient? client}) {
   );
   sl.registerLazySingleton(() => GetAgentRuns(sl<AiAssistantRepository>()));
   sl.registerLazySingleton(() => ApplyAiTaskSuggestions(sl<CreateTask>()));
+  sl.registerLazySingleton(
+    () => CreateProjectFromAiPlan(
+      sl<CreateProject>(),
+      sl<ApplyAiTaskSuggestions>(),
+    ),
+  );
   sl.registerFactory(
     () => TaskAiSuggestionCubit(suggestTasks: sl<SuggestTasks>()),
   );
@@ -213,6 +219,7 @@ void _registerAiAssistantStack({TaskboardApiClient? client}) {
       resetAgentSession: sl<ResetAgentSession>(),
       getAgentRuns: sl<GetAgentRuns>(),
       applyAiTaskSuggestions: sl<ApplyAiTaskSuggestions>(),
+      createProjectFromAiPlan: sl<CreateProjectFromAiPlan>(),
     ),
   );
 }

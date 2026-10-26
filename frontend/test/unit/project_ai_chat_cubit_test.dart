@@ -8,6 +8,7 @@ import 'package:personal_taskboard/features/ai_assistant/domain/entities/ai_chat
 import 'package:personal_taskboard/features/ai_assistant/domain/entities/ai_task_suggestion.dart';
 import 'package:personal_taskboard/features/ai_assistant/domain/usecases/ai_assistant_usecases.dart';
 import 'package:personal_taskboard/features/ai_assistant/presentation/bloc/project_ai_chat_cubit.dart';
+import 'package:personal_taskboard/features/projects/domain/entities/project.dart';
 import 'package:personal_taskboard/features/tasks/domain/entities/task.dart';
 
 class _MockSuggestProjectPlan extends Mock implements SuggestProjectPlan {}
@@ -24,6 +25,9 @@ class _MockResetAgentSession extends Mock implements ResetAgentSession {}
 class _MockGetAgentRuns extends Mock implements GetAgentRuns {}
 
 class _MockApply extends Mock implements ApplyAiTaskSuggestions {}
+
+class _MockCreateProjectFromAiPlan extends Mock
+    implements CreateProjectFromAiPlan {}
 
 AiTaskSuggestion _s(String title) => AiTaskSuggestion(
   title: title,
@@ -57,6 +61,7 @@ void main() {
   late _MockResetAgentSession resetAgentSession;
   late _MockGetAgentRuns getAgentRuns;
   late _MockApply apply;
+  late _MockCreateProjectFromAiPlan createFromPlan;
 
   setUpAll(() {
     registerFallbackValue(
@@ -74,6 +79,13 @@ void main() {
     registerFallbackValue(
       const ApplyAiTaskSuggestionsParams(projectId: 0, draft: [], baseline: []),
     );
+    registerFallbackValue(
+      const CreateProjectFromAiPlanParams(
+        title: '',
+        description: '',
+        draft: [],
+      ),
+    );
   });
 
   setUp(() {
@@ -84,6 +96,7 @@ void main() {
     resetAgentSession = _MockResetAgentSession();
     getAgentRuns = _MockGetAgentRuns();
     apply = _MockApply();
+    createFromPlan = _MockCreateProjectFromAiPlan();
     when(
       () => getAgentSession(any()),
     ).thenAnswer((_) async => const Success(null));
@@ -101,6 +114,7 @@ void main() {
         resetAgentSession: resetAgentSession,
         getAgentRuns: getAgentRuns,
         applyAiTaskSuggestions: apply,
+        createProjectFromAiPlan: createFromPlan,
       )..start(
         mode: mode,
         projectTitle: 'P',
@@ -284,4 +298,42 @@ void main() {
     },
     verify: (c) => expect(c.state.newDraftTasks.single.title, 'Nueva'),
   );
+
+  blocTest<ProjectAiChatCubit, ProjectAiChatState>(
+    'proyecto nuevo: crea el proyecto con el borrador',
+    setUp: () {
+      when(() => suggestProjectPlan(any())).thenAnswer(
+        (_) async => Success(AiSuggestionResult(suggestions: [_s('A')])),
+      );
+      when(() => createFromPlan(any())).thenAnswer(
+        (_) async => Success(
+          ProjectFromAiPlan(
+            project: Project.create(id: 7, title: 'P'),
+            createdTasks: 1,
+          ),
+        ),
+      );
+    },
+    build: () => build(mode: ProjectAiChatMode.create),
+    act: (c) async {
+      await c.sendPlanMessage('una web');
+      final result = await c.createProjectFromDraft();
+      expect(result.valueOrNull?.project.id, 7);
+    },
+    verify: (c) {
+      expect(c.state.isApplying, isFalse);
+      final params =
+          verify(() => createFromPlan(captureAny())).captured.single
+              as CreateProjectFromAiPlanParams;
+      expect(params.title, 'P');
+      expect(params.description, 'D');
+      expect(params.draft.single.title, 'A');
+    },
+  );
+
+  test('proyecto existente: no crea proyectos', () async {
+    final result = await build().createProjectFromDraft();
+    expect(result.failureOrNull, isA<ValidationFailure>());
+    verifyNever(() => createFromPlan(any()));
+  });
 }

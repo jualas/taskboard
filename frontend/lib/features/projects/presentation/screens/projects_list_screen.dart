@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import '../../../ai_assistant/presentation/widgets/project_ai_chat_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../bloc/projects_bloc.dart';
 import '../../../../core/error/result_extensions.dart';
@@ -665,6 +666,20 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancelar'),
+          ),
+          TextButton.icon(
+            onPressed: () {
+              final title = titleController.text.trim();
+              if (title.isEmpty) return;
+              Navigator.pop(context);
+              showNewProjectAiChatSheet(
+                this.context,
+                projectTitle: title,
+                projectDescription: descriptionController.text.trim(),
+              );
+            },
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Planificar con IA'),
           ),
           ElevatedButton(
             onPressed: () {

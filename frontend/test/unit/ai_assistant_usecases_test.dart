@@ -7,12 +7,18 @@ import 'package:personal_taskboard/features/ai_assistant/domain/entities/ai_chat
 import 'package:personal_taskboard/features/ai_assistant/domain/entities/ai_task_suggestion.dart';
 import 'package:personal_taskboard/features/ai_assistant/domain/repositories/ai_assistant_repository.dart';
 import 'package:personal_taskboard/features/ai_assistant/domain/usecases/ai_assistant_usecases.dart';
+import 'package:personal_taskboard/features/projects/domain/entities/project.dart';
+import 'package:personal_taskboard/features/projects/domain/usecases/projects_usecases.dart';
 import 'package:personal_taskboard/features/tasks/domain/entities/task.dart';
 import 'package:personal_taskboard/features/tasks/domain/usecases/tasks_usecases.dart';
 
 class _MockAiRepository extends Mock implements AiAssistantRepository {}
 
 class _MockCreateTask extends Mock implements CreateTask {}
+
+class _MockCreateProject extends Mock implements CreateProject {}
+
+class _MockApply extends Mock implements ApplyAiTaskSuggestions {}
 
 AiTaskSuggestion _s(String title) => AiTaskSuggestion(
   title: title,
@@ -43,6 +49,10 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(const CreateTaskParams(projectId: 0, title: ''));
+    registerFallbackValue(const CreateProjectParams(title: ''));
+    registerFallbackValue(
+      const ApplyAiTaskSuggestionsParams(projectId: 0, draft: [], baseline: []),
+    );
   });
 
   setUp(() => repo = _MockAiRepository());
@@ -230,6 +240,102 @@ void main() {
 
       expect(result.failureOrNull?.message, 'Permiso denegado.');
       verify(() => createTask(any())).called(1);
+    });
+  });
+
+  group('CreateProjectFromAiPlan', () {
+    late _MockCreateProject createProject;
+    late _MockApply apply;
+
+    setUp(() {
+      createProject = _MockCreateProject();
+      apply = _MockApply();
+    });
+
+    CreateProjectFromAiPlan useCase() =>
+        CreateProjectFromAiPlan(createProject, apply);
+
+    test('crea el proyecto y todas las tareas del borrador', () async {
+      when(() => createProject(any())).thenAnswer(
+        (_) async => Success(Project.create(id: 12, title: 'Web')),
+      );
+      when(() => apply(any())).thenAnswer((_) async => const Success(2));
+
+      final result = await useCase()(
+        CreateProjectFromAiPlanParams(
+          title: ' Web ',
+          description: ' Tienda ',
+          draft: [_s('A'), _s('B')],
+        ),
+      );
+
+      final created = result.valueOrNull!;
+      expect(created.project.id, 12);
+      expect(created.createdTasks, 2);
+      expect(created.taskFailure, isNull);
+      final projectParams =
+          verify(() => createProject(captureAny())).captured.single
+              as CreateProjectParams;
+      expect(projectParams.title, 'Web');
+      expect(projectParams.description, 'Tienda');
+      final applyParams =
+          verify(() => apply(captureAny())).captured.single
+              as ApplyAiTaskSuggestionsParams;
+      expect(applyParams.projectId, 12);
+      expect(applyParams.draft, hasLength(2));
+      expect(applyParams.baseline, isEmpty);
+    });
+
+    test('sin título no crea nada', () async {
+      final result = await useCase()(
+        const CreateProjectFromAiPlanParams(
+          title: '  ',
+          description: '',
+          draft: [],
+        ),
+      );
+
+      expect(result.failureOrNull, isA<ValidationFailure>());
+      verifyNever(() => createProject(any()));
+    });
+
+    test('si falla el proyecto no intenta las tareas', () async {
+      when(() => createProject(any())).thenAnswer(
+        (_) async => const ResultFailure(NetworkFailure()),
+      );
+
+      final result = await useCase()(
+        CreateProjectFromAiPlanParams(
+          title: 'Web',
+          description: '',
+          draft: [_s('A')],
+        ),
+      );
+
+      expect(result.failureOrNull, isA<NetworkFailure>());
+      verifyNever(() => apply(any()));
+    });
+
+    test('si fallan las tareas devuelve el proyecto con el fallo', () async {
+      when(() => createProject(any())).thenAnswer(
+        (_) async => Success(Project.create(id: 12, title: 'Web')),
+      );
+      when(() => apply(any())).thenAnswer(
+        (_) async =>
+            const ResultFailure(ServerFailure(message: 'Permiso denegado.')),
+      );
+
+      final result = await useCase()(
+        CreateProjectFromAiPlanParams(
+          title: 'Web',
+          description: '',
+          draft: [_s('A')],
+        ),
+      );
+
+      final created = result.valueOrNull!;
+      expect(created.project.id, 12);
+      expect(created.taskFailure?.message, 'Permiso denegado.');
     });
   });
 }

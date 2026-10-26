@@ -79,7 +79,6 @@ Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stab
 
 Estado de `main` a 2026-10-25 (CA-0…CA-6 fusionadas, migración terminada):
 
-- `ProjectAiChatPanel` conserva el modo `create` (plan de un proyecto nuevo), que ninguna pantalla abre. Pendiente de decidir si se borra junto con `SuggestProjectPlan` o se conecta al alta de proyectos.
 - `intl` y `path_provider` siguen en `pubspec.yaml` sin usarse en `lib/`.
 
 Al resolver un punto, quitarlo de esta lista en el mismo commit.

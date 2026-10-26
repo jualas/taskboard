@@ -67,7 +67,7 @@ features/<feature>/
 | `auth` | `AuthUser` | `Login`, `Logout`, `RestoreSession`, `ChangePassword` |
 | `tasks` | `Task`, `Subtask`, `TaskStatus`, `TaskComplexity` | `GetTasksByProject`, `CreateTask`, `UpdateTask`, `UpdateTaskStatus`, `MoveTask`, `DeleteTask` |
 | `projects` | `Project`, `ProjectMember`, `AppUser`, `WorkspaceSuggestion`, `WorkspaceInventory`, `IdePrompt`… | 19: proyectos (`GetProjects`, `GetProject`, `CreateProject`, `UpdateProject`, `UpdateProjectStatus`, `DeleteProject`), miembros (`GetProjectMembers`, `GetRegisteredUsers`, `AddProjectMember`, `UpdateProjectMemberRole`, `RemoveProjectMember`), workspace (`PreviewWorkspaceSnapshot`, `SyncProjectWorkspace`, `GetWorkspaceSuggestions`, `ApplyWorkspaceSuggestion`, `DismissWorkspaceSuggestion`, `GetWorkspaceInventory`, `ExportTaskboardMd`) e IDE (`PrepareIdeSession`) |
-| `ai_assistant` | `AiTaskSuggestion`, `AiChatMessage`, `AiChatReply`, `AiSuggestionResult`, `AgentSession`, `AgentRun`, `AgentStreamEvent` | `SuggestTasks`, `SuggestProjectPlan`, `SendProjectChatMessage`, `ApplyAiTaskSuggestions`, `StreamAgentRun`, `GetAgentSession`, `ResetAgentSession`, `GetAgentRuns` |
+| `ai_assistant` | `AiTaskSuggestion`, `AiChatMessage`, `AiChatReply`, `AiSuggestionResult`, `AgentSession`, `AgentRun`, `AgentStreamEvent` | `SuggestTasks`, `SuggestProjectPlan`, `SendProjectChatMessage`, `ApplyAiTaskSuggestions`, `CreateProjectFromAiPlan`, `StreamAgentRun`, `GetAgentSession`, `ResetAgentSession`, `GetAgentRuns` |
 
 ## Errores
 
@@ -102,8 +102,9 @@ features/<feature>/
 - El repositorio conserva el texto original del error (código HTTP y cuerpo, `TimeoutException`, `ClientException`) en el `Failure`, porque `describeAiFailure` (`presentation/utils/`) elige el mensaje para el usuario a partir de él.
 - El stream de Cursor Agent se expone como `Stream<Result<AgentStreamEvent>>`: un error llega como un último `ResultFailure`, no como excepción. `StreamAgentRun` no implementa `UseCase` porque no devuelve un `Future`.
 - Las reglas puras que comparan el borrador de la IA con las tareas del proyecto están en `domain/services/ai_task_conversion.dart`; `ApplyAiTaskSuggestions` las usa y crea las tareas con el caso de uso `CreateTask` de tasks.
+- Alta de un proyecto con IA: el diálogo «Nuevo Proyecto» abre `ProjectAiChatPanel` en modo `create` (`showNewProjectAiChatSheet`). El primer mensaje pide el plan con `SuggestProjectPlan` y `CreateProjectFromAiPlan` crea el proyecto con `CreateProject` y luego sus tareas con `ApplyAiTaskSuggestions`. Si fallan las tareas, el proyecto ya existe y el resultado lo indica en `taskFailure`. En este modo no se ofrece Agent, que necesita la carpeta de un proyecto creado.
 - El título y la descripción del proyecto viajan siempre en `projectContext`, como datos separados del mensaje del usuario.
-- Los Cubits son por pantalla: `ProjectAiChatPanel` y `TaskForm` crean el suyo con `BlocProvider(create: (_) => sl<…>())`. Las acciones cuyo resultado muestra la UI en un aviso (`resetAgentSession`, `applyNewTasks`) devuelven el `Result`.
+- Los Cubits son por pantalla: `ProjectAiChatPanel` y `TaskForm` crean el suyo con `BlocProvider(create: (_) => sl<…>())`. Las acciones cuyo resultado muestra la UI en un aviso (`resetAgentSession`, `applyNewTasks`, `createProjectFromDraft`) devuelven el `Result`.
 
 ## Inyección de dependencias
 
