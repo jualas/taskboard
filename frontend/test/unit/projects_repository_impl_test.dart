@@ -2,12 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:personal_taskboard/core/error/exceptions.dart';
 import 'package:personal_taskboard/core/error/failures.dart';
-import 'package:personal_taskboard/features/projects/data/datasources/projects_remote_data_source.dart';
+import 'package:personal_taskboard/features/projects/data/datasources/projects_data_source.dart';
 import 'package:personal_taskboard/features/projects/data/repositories/projects_repository_impl.dart';
 import 'package:personal_taskboard/features/projects/domain/entities/project.dart';
 import 'package:personal_taskboard/features/projects/domain/entities/workspace.dart';
 
-class _MockRemote extends Mock implements ProjectsRemoteDataSource {}
+class _MockRemote extends Mock implements ProjectsDataSource {}
 
 final _t = DateTime(2026, 1, 1);
 

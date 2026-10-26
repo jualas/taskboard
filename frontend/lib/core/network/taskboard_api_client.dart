@@ -10,10 +10,14 @@ class TaskboardApiClient {
   TaskboardApiClient({
     required this.baseUrl,
     required this.tokenProvider,
-  });
+    http.Client? httpClient,
+  }) : _http = httpClient ?? http.Client();
 
   final String baseUrl;
   final TokenProvider tokenProvider;
+
+  /// Cliente para las peticiones normales; los tests pasan un `MockClient`.
+  final http.Client _http;
 
   String get origin =>
       baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
@@ -30,7 +34,7 @@ class TaskboardApiClient {
 
   Future<http.Response> get(String path) async {
     final uri = Uri.parse('$origin$path');
-    return http.get(uri, headers: _headers());
+    return _http.get(uri, headers: _headers());
   }
 
   Future<http.Response> post(
@@ -44,7 +48,7 @@ class TaskboardApiClient {
     if (extraHeaders != null) {
       h.addAll(extraHeaders);
     }
-    final future = http.post(
+    final future = _http.post(
       uri,
       headers: h,
       body: body == null ? null : jsonEncode(body),
@@ -57,7 +61,7 @@ class TaskboardApiClient {
 
   Future<http.Response> put(String path, {required Object body}) async {
     final uri = Uri.parse('$origin$path');
-    return http.put(
+    return _http.put(
       uri,
       headers: _headers(jsonBody: true),
       body: jsonEncode(body),
@@ -66,7 +70,7 @@ class TaskboardApiClient {
 
   Future<http.Response> patch(String path, {required Object body}) async {
     final uri = Uri.parse('$origin$path');
-    return http.patch(
+    return _http.patch(
       uri,
       headers: _headers(jsonBody: true),
       body: jsonEncode(body),
@@ -75,7 +79,7 @@ class TaskboardApiClient {
 
   Future<http.Response> delete(String path) async {
     final uri = Uri.parse('$origin$path');
-    return http.delete(uri, headers: _headers());
+    return _http.delete(uri, headers: _headers());
   }
 
   /// POST con respuesta SSE (`text/event-stream`), líneas `data: {...}`.

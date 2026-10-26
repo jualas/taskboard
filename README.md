@@ -27,7 +27,7 @@ Gestor de proyectos y tareas (Kanban y lista) con un **asistente IA que planific
 
 ## Arquitectura del cliente Flutter
 
-El frontend sigue **Clean Architecture** (dominio, casos de uso, repositorios, BLoC, `get_it`). Documentación: [docs/architecture/clean-architecture.md](docs/architecture/clean-architecture.md).
+El frontend sigue **Clean Architecture** por funcionalidad (`ai_assistant`, `auth`, `projects`, `tasks`): dominio en Dart puro con 37 casos de uso, repositorios que devuelven `Result`/`Failure`, data sources para el API y para el modo local, BLoC/Cubit y `get_it`. Un test de arquitectura vigila la regla de dependencias y el CI bloquea avisos nuevos de `flutter analyze`. Decisiones y guía para añadir una feature: [docs/architecture/clean-architecture.md](docs/architecture/clean-architecture.md).
 
 ## De TFG a producto
 
@@ -121,7 +121,7 @@ Las migraciones se aplican solas al crear la base de datos. La vinculación de c
 
 ```
 backend/          API FastAPI (routers, workspace, agente IA) y migraciones SQL
-frontend/         Cliente Flutter (lib/blocs, screens, services, widgets)
+frontend/         Cliente Flutter (lib/core, lib/features/<feature>/{domain,data,presentation}, lib/shared)
 mcp-taskboard/    Servidor MCP (stdio) sobre la API
 scripts/          Instalación del MCP, export de TASKBOARD.md
 deploy/           Caddyfile

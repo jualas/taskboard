@@ -30,18 +30,32 @@ abstract class ProjectsRepository {
 
 // data/repositories/projects_repository_impl.dart
 class ProjectsRepositoryImpl implements ProjectsRepository {
-  ProjectsRepositoryImpl(this._remote);
-  final ProjectsRemoteDataSource _remote;
+  ProjectsRepositoryImpl(this._dataSource);
+  final ProjectsDataSource _dataSource;
 
   @override
   Future<Result<Project?>> getProject(int id) async {
     try {
-      final model = await _remote.getProject(id);
-      return Success(model?.toEntity());
+      return Success(await _dataSource.getProject(id));
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
   }
+}
+
+// data/datasources/projects_api_data_source.dart
+class ProjectsApiDataSource implements ProjectsDataSource {
+  ProjectsApiDataSource(this._client);
+  final TaskboardApiClient _client;
+
+  @override
+  Future<Project?> getProject(int id) =>
+      guardApiCall('Obtener proyecto', () async {
+        final res = await _client.get('/api/projects/$id');
+        if (res.statusCode == 404) return null;
+        ensureSuccess(res, 'Obtener proyecto');
+        return ProjectModel.fromApiJson(decodeJsonMap(res.body)).toEntity();
+      });
 }
 ```
 
@@ -49,7 +63,11 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
 
 ```dart
 sl
-  ..registerLazySingleton<ProjectsRemoteDataSource>(() => ProjectsRemoteDataSource(sl()))
+  ..registerLazySingleton<ProjectsDataSource>(
+    () => client != null
+        ? ProjectsApiDataSource(client)
+        : ProjectsLocalDataSource(sl<StorageService>()),
+  )
   ..registerLazySingleton<ProjectsRepository>(() => ProjectsRepositoryImpl(sl()))
   ..registerLazySingleton(() => GetProject(sl()))
   ..registerFactory(() => ProjectsBloc(getProject: sl() /* … */));

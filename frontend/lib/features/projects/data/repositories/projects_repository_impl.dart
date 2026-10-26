@@ -4,17 +4,17 @@ import '../../domain/entities/project.dart';
 import '../../domain/entities/project_member.dart';
 import '../../domain/entities/workspace.dart';
 import '../../domain/repositories/projects_repository.dart';
-import '../datasources/projects_remote_data_source.dart';
+import '../datasources/projects_data_source.dart';
 
 class ProjectsRepositoryImpl implements ProjectsRepository {
-  ProjectsRepositoryImpl(this._remote);
+  ProjectsRepositoryImpl(this._dataSource);
 
-  final ProjectsRemoteDataSource _remote;
+  final ProjectsDataSource _dataSource;
 
   @override
   Future<Result<List<Project>>> getProjects() async {
     try {
-      return Success(await _remote.getProjects());
+      return Success(await _dataSource.getProjects());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -23,7 +23,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   @override
   Future<Result<Project?>> getProject(int id) async {
     try {
-      return Success(await _remote.getProject(id));
+      return Success(await _dataSource.getProject(id));
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -32,7 +32,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   @override
   Future<Result<Project>> createProject(Project project) async {
     try {
-      return Success(await _remote.createProject(project));
+      return Success(await _dataSource.createProject(project));
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -41,7 +41,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   @override
   Future<Result<Project>> updateProject(Project project) async {
     try {
-      return Success(await _remote.saveProject(project));
+      return Success(await _dataSource.saveProject(project));
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -50,7 +50,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   @override
   Future<Result<void>> deleteProject(int id) async {
     try {
-      await _remote.deleteProject(id);
+      await _dataSource.deleteProject(id);
       return const Success(null);
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -62,7 +62,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
     String path,
   ) async {
     try {
-      final raw = await _remote.previewWorkspaceSnapshot(path);
+      final raw = await _dataSource.previewWorkspaceSnapshot(path);
       return Success(
         WorkspacePreview((raw['summary'] ?? '').toString().trim()),
       );
@@ -76,7 +76,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
     int projectId,
   ) async {
     try {
-      return Success(await _remote.getProjectWorkspaceSnapshot(projectId));
+      return Success(await _dataSource.getProjectWorkspaceSnapshot(projectId));
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -89,7 +89,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   }) async {
     try {
       return Success(
-        await _remote.getWorkspaceSuggestions(projectId, state: state),
+        await _dataSource.getWorkspaceSuggestions(projectId, state: state),
       );
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -99,7 +99,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   @override
   Future<Result<void>> syncProjectWorkspace(int projectId) async {
     try {
-      await _remote.syncProjectWorkspace(projectId);
+      await _dataSource.syncProjectWorkspace(projectId);
       return const Success(null);
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -113,7 +113,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
     String filename = '',
   }) async {
     try {
-      final raw = await _remote.exportTaskboardMd(
+      final raw = await _dataSource.exportTaskboardMd(
         projectId,
         dryRun: dryRun,
         filename: filename,
@@ -132,7 +132,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   Future<Result<IdePrompt>> getIdePrompt(int projectId, {int? focusTaskId}) async {
     try {
       return Success(
-        await _remote.getIdePrompt(projectId, focusTaskId: focusTaskId),
+        await _dataSource.getIdePrompt(projectId, focusTaskId: focusTaskId),
       );
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -146,7 +146,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   }) async {
     try {
       return Success(
-        await _remote.prepareIdeSession(projectId, focusTaskId: focusTaskId),
+        await _dataSource.prepareIdeSession(projectId, focusTaskId: focusTaskId),
       );
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -159,7 +159,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
     int suggestionId,
   ) async {
     try {
-      await _remote.applyWorkspaceSuggestion(projectId, suggestionId);
+      await _dataSource.applyWorkspaceSuggestion(projectId, suggestionId);
       return const Success(null);
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -172,7 +172,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
     int suggestionId,
   ) async {
     try {
-      await _remote.dismissWorkspaceSuggestion(projectId, suggestionId);
+      await _dataSource.dismissWorkspaceSuggestion(projectId, suggestionId);
       return const Success(null);
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -182,7 +182,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   @override
   Future<Result<WorkspaceInventory>> getWorkspaceInventory() async {
     try {
-      return Success(await _remote.getWorkspaceInventory());
+      return Success(await _dataSource.getWorkspaceInventory());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -191,7 +191,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   @override
   Future<Result<List<AppUser>>> getRegisteredUsers() async {
     try {
-      return Success(await _remote.getRegisteredUsers());
+      return Success(await _dataSource.getRegisteredUsers());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -200,7 +200,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   @override
   Future<Result<List<ProjectMember>>> getProjectMembers(int projectId) async {
     try {
-      return Success(await _remote.getProjectMembers(projectId));
+      return Success(await _dataSource.getProjectMembers(projectId));
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }
@@ -214,7 +214,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   }) async {
     try {
       return Success(
-        await _remote.addProjectMember(
+        await _dataSource.addProjectMember(
           projectId: projectId,
           userId: userId,
           role: role,
@@ -233,7 +233,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   }) async {
     try {
       return Success(
-        await _remote.updateProjectMemberRole(
+        await _dataSource.updateProjectMemberRole(
           projectId: projectId,
           userId: userId,
           role: role,
@@ -250,7 +250,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
     required String userId,
   }) async {
     try {
-      await _remote.removeProjectMember(projectId: projectId, userId: userId);
+      await _dataSource.removeProjectMember(projectId: projectId, userId: userId);
       return const Success(null);
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -260,7 +260,7 @@ class ProjectsRepositoryImpl implements ProjectsRepository {
   @override
   Future<Result<bool>> canEditProject(int projectId) async {
     try {
-      return Success(await _remote.canEditProject(projectId));
+      return Success(await _dataSource.canEditProject(projectId));
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
     }

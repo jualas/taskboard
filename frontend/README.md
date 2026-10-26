@@ -6,11 +6,28 @@ Aplicación Flutter para Web, Android y Escritorio. Este README está orientado 
 
 ## Arquitectura
 
-El cliente Flutter sigue **Clean Architecture** (dominio, casos de uso, repositorios, BLoC, `get_it`). Guía completa, diagramas y plan de migración CA-0…CA-6:
+El cliente Flutter sigue **Clean Architecture** por funcionalidad (`ai_assistant`, `auth`, `projects`, `tasks`), con BLoC/Cubit y `get_it`. Decisiones, árbol completo, lista de casos de uso y cómo añadir una feature: [docs/architecture/clean-architecture.md](../docs/architecture/clean-architecture.md).
 
-- [docs/architecture/clean-architecture.md](../docs/architecture/clean-architecture.md)
+```mermaid
+flowchart LR
+  subgraph presentation
+    UI[Pantallas y widgets] --> BLoC[BLoC / Cubit]
+  end
+  subgraph domain
+    UC[Casos de uso] --> REPO[Repositorio abstracto]
+    ENT[Entidades]
+  end
+  subgraph data
+    IMPL[Repositorio impl] --> API[Data source API]
+    IMPL --> LOCAL[Data source local]
+  end
+  BLoC --> UC
+  REPO -.implementa.-> IMPL
+  API --> HTTP[TaskboardApiClient]
+  LOCAL --> PREFS[StorageService]
+```
 
-Tests de reglas de dependencias: `flutter test test/architecture/dependency_rule_test.dart`
+Regla de dependencias: `presentation → domain ← data`; solo `core/di/injection.dart` conoce todas las capas. Lo comprueba `test/architecture/dependency_rule_test.dart`.
 
 ## Características
 - Arquitectura basada en BLoC, casos de uso y repositorios.
@@ -117,14 +134,14 @@ Los artefactos resultantes se ubicarán en `build/` según la plataforma.
 ## Estructura del proyecto (resumen)
 ```
 lib/
-  main.dart                 # Punto de entrada
-  models/                   # Modelos de datos (json_serializable)
-  services/                 # Lógica de negocio / acceso a datos
-  blocs/                    # Estado (BLoC)
-  screens/                  # Vistas/pantallas
-  widgets/                  # Componentes reutilizables
-  utils/                    # Utilidades (errores, helpers)
-  themes/                   # Tematización
+  main.dart                 # Arranque: StorageService, DI y BLoCs globales
+  core/                     # config, di, error (Result/Failure), network, storage, usecase
+  features/
+    <feature>/
+      domain/               # entidades, repositorios abstractos, casos de uso
+      data/                 # modelos JSON, data sources (API y local), repositorios
+      presentation/         # BLoC/Cubit, pantallas, widgets
+  shared/                   # router, themes, ui, utils
 ```
 
 ---
@@ -142,12 +159,30 @@ flutter format .
 
 ## Tests
 ```bash
-# Unitarios / integración
+# Todos los tests (unitarios, BLoC y arquitectura)
 flutter test
 
-# Cobertura
+# Solo la regla de dependencias
+flutter test test/architecture/dependency_rule_test.dart
+
+# Cobertura por capa (desde la raíz del repo)
 flutter test --coverage
+python3 ../scripts/coverage_by_layer.py coverage/lcov.info
+
+# Lo mismo que el CI, sin flutter local (usa Docker): analyze + test y avisos nuevos respecto a main
+../scripts/flutter-check.sh --vs-main
 ```
+
+Cobertura de líneas al cerrar la migración (2026-10-25, 134 tests):
+
+| Capa | Cobertura |
+|---|---:|
+| domain | 84,4 % |
+| data | 62,5 % |
+| presentation | 65,6 % |
+| core | 53,1 % |
+
+Solo cuenta los ficheros que cargan los tests; en presentation la cifra es optimista.
 
 ---
 
@@ -172,12 +207,10 @@ Consulta el archivo `LICENSE` en la raíz del repositorio.
 ---
 
 ## Arquitectura y decisiones clave
-- Capas: `blocs` (estado), `services` (lógica/acceso a datos), `models` (DTOs/serialización), `screens`/`widgets` (UI), `utils` (errores/i18n/helpers).
-- Navegación con `GoRouter` y rutas por rol.
-- **Scaffold persistente**: `PersistentScaffold` mantiene el AppBar y drawer consistentes en todas las rutas.
-- **Menú lateral**: `AppSideDrawer` proporciona navegación específica por rol con menú hamburguesa.
-- BLoC para aislar UI de lógica de negocio.
-- Trade‑offs: simplicidad de testing en servicios y blocs; serialización con `json_serializable` para tipado estricto.
+- Clean Architecture por feature (ver [ADR](../docs/architecture/clean-architecture.md)): `domain` en Dart puro, `data` con modelos JSON escritos a mano y `presentation` con BLoC/Cubit.
+- Errores como valores: los repositorios devuelven `Result<T>` con `Failure`, nunca lanzan.
+- Dos modos de datos: API TaskBoard o local (SharedPreferences), elegido en `core/di/injection.dart`.
+- Navegación con `GoRouter`; el redirect usa la sesión de `AuthRepository`.
 
 ## Configuración y entornos
 - `TASKBOARD_API_URL` / `TASKBOARD_API_SAME_ORIGIN_PROXY` o `assets/data/config.json` → `taskboardApi`.
@@ -189,9 +222,9 @@ Consulta el archivo `LICENSE` en la raíz del repositorio.
 - Commits: preferible Conventional Commits (feat, fix, refactor, docs, chore, test).
 
 ## Tests y calidad
-- Unit: servicios y blocs con mocks (preferible `mocktail`/`Mockito`).
-- Integración: pruebas de flujo crítico (login, navegación por roles).
-- Cobertura: `flutter test --coverage` y revisar umbral mínimo en CI (si aplica).
+- Unit: casos de uso, repositorios, data sources (`MockClient`), modelos y BLoC/Cubit con `mocktail` y `bloc_test`.
+- Arquitectura: `test/architecture/dependency_rule_test.dart`.
+- CI (`.github/workflows/tests.yml`): `flutter analyze`, ningún aviso nuevo respecto a la rama base, `flutter test --coverage` y tabla de cobertura por capa en el resumen.
 
 ## i18n / l10n
 - Archivos ARB en `lib/l10n/`.

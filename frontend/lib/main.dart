@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'blocs/blocs.dart';
 import 'core/di/injection.dart';
-import 'services/services.dart';
+import 'core/storage/storage_service.dart';
+import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'features/projects/presentation/bloc/projects_bloc.dart';
+import 'features/tasks/presentation/bloc/tasks_bloc.dart';
 import 'shared/router/app_router.dart';
 import 'shared/themes/app_theme.dart';
 import 'shared/ui/root_scaffold_messenger.dart';

@@ -3,18 +3,18 @@ import '../../../../core/error/failures.dart';
 import '../../../../core/error/result.dart';
 import '../../domain/entities/task.dart';
 import '../../domain/repositories/tasks_repository.dart';
-import '../datasources/tasks_remote_data_source.dart';
+import '../datasources/tasks_data_source.dart';
 import '../models/task_model.dart';
 
 class TasksRepositoryImpl implements TasksRepository {
-  TasksRepositoryImpl(this._remote);
+  TasksRepositoryImpl(this._dataSource);
 
-  final TasksRemoteDataSource _remote;
+  final TasksDataSource _dataSource;
 
   @override
   Future<Result<List<Task>>> getTasksByProject(int projectId) async {
     try {
-      final models = await _remote.getTasksByProject(projectId);
+      final models = await _dataSource.getTasksByProject(projectId);
       return Success(models.map((m) => m.toEntity()).toList());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -24,7 +24,7 @@ class TasksRepositoryImpl implements TasksRepository {
   @override
   Future<Result<Task?>> getTask(int id) async {
     try {
-      final model = await _remote.getTask(id);
+      final model = await _dataSource.getTask(id);
       return Success(model?.toEntity());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -44,7 +44,7 @@ class TasksRepositoryImpl implements TasksRepository {
     List<Subtask> subtasks = const [],
   }) async {
     try {
-      final id = await _remote.getNextTaskId();
+      final id = await _dataSource.getNextTaskId();
       final projectResult = await getTasksByProject(projectId);
       final projectTasks = projectResult.valueOrNull ?? [];
       final sameStatus =
@@ -69,7 +69,7 @@ class TasksRepositoryImpl implements TasksRepository {
         tags: tags,
         subtasks: subtasks,
       );
-      final saved = await _remote.saveTask(TaskModel.fromEntity(task));
+      final saved = await _dataSource.saveTask(TaskModel.fromEntity(task));
       return Success(saved.toEntity());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -80,7 +80,7 @@ class TasksRepositoryImpl implements TasksRepository {
   Future<Result<Task>> updateTask(Task task) async {
     try {
       final saved =
-          await _remote.saveTask(TaskModel.fromEntity(task));
+          await _dataSource.saveTask(TaskModel.fromEntity(task));
       return Success(saved.toEntity());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -90,7 +90,7 @@ class TasksRepositoryImpl implements TasksRepository {
   @override
   Future<Result<void>> deleteTask(int id) async {
     try {
-      await _remote.deleteTask(id);
+      await _dataSource.deleteTask(id);
       return const Success(null);
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -100,7 +100,7 @@ class TasksRepositoryImpl implements TasksRepository {
   @override
   Future<Result<Task>> updateTaskStatus(int id, TaskStatus status) async {
     try {
-      final current = await _remote.getTask(id);
+      final current = await _dataSource.getTask(id);
       if (current == null) {
         return const ResultFailure(NotFoundFailure('Tarea no encontrada'));
       }
@@ -122,7 +122,7 @@ class TasksRepositoryImpl implements TasksRepository {
         kanbanPosition: kanbanPosition,
         updatedAt: DateTime.now(),
       );
-      final saved = await _remote.saveTask(TaskModel.fromEntity(updated));
+      final saved = await _dataSource.saveTask(TaskModel.fromEntity(updated));
       return Success(saved.toEntity());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));
@@ -136,7 +136,7 @@ class TasksRepositoryImpl implements TasksRepository {
     required int targetIndex,
   }) async {
     try {
-      final current = await _remote.getTask(taskId);
+      final current = await _dataSource.getTask(taskId);
       if (current == null) {
         return const ResultFailure(NotFoundFailure('Tarea no encontrada'));
       }
@@ -167,7 +167,7 @@ class TasksRepositoryImpl implements TasksRepository {
         kanbanPosition: newPosition,
         updatedAt: DateTime.now(),
       );
-      final saved = await _remote.saveTask(TaskModel.fromEntity(updated));
+      final saved = await _dataSource.saveTask(TaskModel.fromEntity(updated));
       return Success(saved.toEntity());
     } catch (e) {
       return ResultFailure(mapExceptionToFailure(e));

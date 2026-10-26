@@ -6,6 +6,7 @@ import '../../../../shared/themes/app_theme.dart';
 import '../../../../shared/ui/root_scaffold_messenger.dart';
 import '../../../tasks/domain/entities/task.dart';
 import '../../domain/entities/ai_task_suggestion.dart';
+import '../../domain/usecases/create_project_from_ai_plan.dart';
 import '../bloc/project_ai_chat_cubit.dart';
 
 export '../bloc/project_ai_chat_cubit.dart' show ProjectAiChatMode;
@@ -23,6 +24,7 @@ class ProjectAiChatPanel extends StatelessWidget {
     this.existingTasks = const [],
     this.onDraftTasksChanged,
     this.onTasksApplied,
+    this.onProjectCreated,
   });
 
   final ProjectAiChatMode mode;
@@ -32,6 +34,9 @@ class ProjectAiChatPanel extends StatelessWidget {
   final List<Task> existingTasks;
   final ValueChanged<List<AiTaskSuggestion>>? onDraftTasksChanged;
   final VoidCallback? onTasksApplied;
+
+  /// Modo nuevo proyecto: se llama tras crear el proyecto con el borrador.
+  final ValueChanged<ProjectFromAiPlan>? onProjectCreated;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +54,7 @@ class ProjectAiChatPanel extends StatelessWidget {
         projectId: projectId,
         onDraftTasksChanged: onDraftTasksChanged,
         onTasksApplied: onTasksApplied,
+        onProjectCreated: onProjectCreated,
       ),
     );
   }
@@ -60,12 +66,14 @@ class _ProjectAiChatView extends StatefulWidget {
     required this.projectId,
     required this.onDraftTasksChanged,
     required this.onTasksApplied,
+    required this.onProjectCreated,
   });
 
   final ProjectAiChatMode mode;
   final int? projectId;
   final ValueChanged<List<AiTaskSuggestion>>? onDraftTasksChanged;
   final VoidCallback? onTasksApplied;
+  final ValueChanged<ProjectFromAiPlan>? onProjectCreated;
 
   @override
   State<_ProjectAiChatView> createState() => _ProjectAiChatViewState();
@@ -196,6 +204,41 @@ class _ProjectAiChatViewState extends State<_ProjectAiChatView> {
     );
   }
 
+  Future<void> _createProject() async {
+    if (widget.mode != ProjectAiChatMode.create || _chat.isApplying) return;
+    final result = await _cubit.createProjectFromDraft();
+    if (!mounted) return;
+    result.when(
+      success: (created) {
+        final taskFailure = created.taskFailure;
+        kRootScaffoldMessenger.currentState?.showSnackBar(
+          SnackBar(
+            content: Text(
+              taskFailure != null
+                  ? 'Proyecto creado, pero no se pudieron crear todas las tareas: '
+                        '${taskFailure.message}'
+                  : created.createdTasks == 1
+                  ? 'Proyecto creado con 1 tarea.'
+                  : 'Proyecto creado con ${created.createdTasks} tareas.',
+            ),
+            backgroundColor: taskFailure != null
+                ? AppColors.warning
+                : AppColors.success,
+          ),
+        );
+        widget.onProjectCreated?.call(created);
+      },
+      onFailure: (failure) {
+        kRootScaffoldMessenger.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('No se pudo crear el proyecto: ${failure.message}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<ProjectAiChatCubit, ProjectAiChatState>(
@@ -261,33 +304,35 @@ class _ProjectAiChatViewState extends State<_ProjectAiChatView> {
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: SegmentedButton<_AssistantMode>(
-            segments: const [
-              ButtonSegment(
-                value: _AssistantMode.plan,
-                label: Text('Planificar'),
-                icon: Icon(Icons.chat_bubble_outline, size: 18),
-              ),
-              ButtonSegment(
-                value: _AssistantMode.agent,
-                label: Text('Agent (CLI)'),
-                icon: Icon(Icons.terminal, size: 18),
-              ),
-            ],
-            selected: {_assistantMode},
-            onSelectionChanged: _chat.isLoading
-                ? null
-                : (s) {
-                    final mode = s.first;
-                    setState(() => _assistantMode = mode);
-                    if (mode == _AssistantMode.agent) {
-                      _cubit.loadAgentMeta();
-                    }
-                  },
+        // Agent necesita la carpeta de un proyecto ya creado.
+        if (widget.mode == ProjectAiChatMode.existing)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SegmentedButton<_AssistantMode>(
+              segments: const [
+                ButtonSegment(
+                  value: _AssistantMode.plan,
+                  label: Text('Planificar'),
+                  icon: Icon(Icons.chat_bubble_outline, size: 18),
+                ),
+                ButtonSegment(
+                  value: _AssistantMode.agent,
+                  label: Text('Agent (CLI)'),
+                  icon: Icon(Icons.terminal, size: 18),
+                ),
+              ],
+              selected: {_assistantMode},
+              onSelectionChanged: _chat.isLoading
+                  ? null
+                  : (s) {
+                      final mode = s.first;
+                      setState(() => _assistantMode = mode);
+                      if (mode == _AssistantMode.agent) {
+                        _cubit.loadAgentMeta();
+                      }
+                    },
+            ),
           ),
-        ),
         if (_assistantMode == _AssistantMode.agent) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -669,6 +714,28 @@ class _ProjectAiChatViewState extends State<_ProjectAiChatView> {
                       : newCount == 1
                           ? 'Aplicar 1 tarea nueva'
                           : 'Aplicar $newCount tareas nuevas',
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: FilledButton.icon(
+                onPressed: _chat.isApplying ? null : _createProject,
+                icon: _chat.isApplying
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.textOnDark,
+                        ),
+                      )
+                    : const Icon(Icons.create_new_folder_outlined),
+                label: Text(
+                  _chat.draftTasks.length == 1
+                      ? 'Crear proyecto con 1 tarea'
+                      : 'Crear proyecto con ${_chat.draftTasks.length} tareas',
                 ),
               ),
             ),

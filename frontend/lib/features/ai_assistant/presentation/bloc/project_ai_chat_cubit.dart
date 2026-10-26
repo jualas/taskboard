@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/error/failures.dart';
 import '../../../../core/error/result.dart';
 import '../../../tasks/domain/entities/task.dart';
 import '../../domain/entities/agent_session.dart';
@@ -122,6 +123,7 @@ class ProjectAiChatCubit extends Cubit<ProjectAiChatState> {
     required ResetAgentSession resetAgentSession,
     required GetAgentRuns getAgentRuns,
     required ApplyAiTaskSuggestions applyAiTaskSuggestions,
+    required CreateProjectFromAiPlan createProjectFromAiPlan,
   }) : _suggestProjectPlan = suggestProjectPlan,
        _sendProjectChatMessage = sendProjectChatMessage,
        _streamAgentRun = streamAgentRun,
@@ -129,6 +131,7 @@ class ProjectAiChatCubit extends Cubit<ProjectAiChatState> {
        _resetAgentSession = resetAgentSession,
        _getAgentRuns = getAgentRuns,
        _applyAiTaskSuggestions = applyAiTaskSuggestions,
+       _createProjectFromAiPlan = createProjectFromAiPlan,
        super(const ProjectAiChatState());
 
   final SuggestProjectPlan _suggestProjectPlan;
@@ -138,6 +141,7 @@ class ProjectAiChatCubit extends Cubit<ProjectAiChatState> {
   final ResetAgentSession _resetAgentSession;
   final GetAgentRuns _getAgentRuns;
   final ApplyAiTaskSuggestions _applyAiTaskSuggestions;
+  final CreateProjectFromAiPlan _createProjectFromAiPlan;
 
   ProjectAiChatMode _mode = ProjectAiChatMode.existing;
   String _projectTitle = '';
@@ -481,6 +485,26 @@ class ProjectAiChatCubit extends Cubit<ProjectAiChatState> {
         baseline: result.isSuccess ? List<AiTaskSuggestion>.from(draft) : null,
       ),
     );
+    return result;
+  }
+
+  /// Modo nuevo proyecto: crea el proyecto con las tareas del borrador.
+  Future<Result<ProjectFromAiPlan>> createProjectFromDraft() async {
+    if (_mode != ProjectAiChatMode.create || state.isApplying) {
+      return const ResultFailure(
+        ValidationFailure('El asistente no está en modo nuevo proyecto.'),
+      );
+    }
+    emit(state.copyWith(isApplying: true));
+    final result = await _createProjectFromAiPlan(
+      CreateProjectFromAiPlanParams(
+        title: _projectTitle,
+        description: _projectDescription,
+        draft: state.draftTasks,
+      ),
+    );
+    if (isClosed) return result;
+    emit(state.copyWith(isApplying: false));
     return result;
   }
 }

@@ -1,4 +1,5 @@
 export 'apply_ai_task_suggestions.dart';
+export 'create_project_from_ai_plan.dart';
 export 'get_agent_runs.dart';
 export 'get_agent_session.dart';
 export 'reset_agent_session.dart';

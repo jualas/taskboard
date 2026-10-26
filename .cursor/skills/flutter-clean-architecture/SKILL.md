@@ -18,8 +18,7 @@ Fuente de verdad: `docs/architecture/clean-architecture.md` (ADR). Resumen siemp
 
 1. Identificar la feature (`tasks`, `projects`, `auth`, `ai_assistant`) y la entrega CA-x a la que pertenece el cambio (tabla del ADR y tareas CA-* del proyecto 10 en TaskBoard).
 2. Usar `features/tasks/` como referencia de estructura y estilo.
-3. Si el fichero a tocar está en código heredado (`lib/screens`, `lib/widgets`, `lib/blocs`, `lib/services`, `lib/models`):
-   - Todas las features están migradas: moverlo a `features/<f>/` en el mismo cambio (`git mv`, para conservar historial). **Nunca** crear ficheros nuevos en carpetas heredadas.
+3. `lib/` solo tiene `core/`, `features/`, `shared/` y `main.dart` (lo comprueba el test de arquitectura). No crear carpetas nuevas en `lib/`: el código va en la feature que corresponda, o en `core/` / `shared/` si es transversal.
 
 ## 2. Dónde va cada cosa
 
@@ -37,13 +36,13 @@ Dependencias: `presentation → domain ← data`. `domain` es Dart puro (sin `pa
 
 ## 3. Checklist del cambio
 
-- [ ] Ningún import de `data/`, `services/` o `models/` (heredado) desde `presentation/`.
+- [ ] Ningún import de `data/` desde `presentation/`.
 - [ ] Ningún import de Flutter/HTTP/JSON ni de otras capas desde `domain/`.
 - [ ] Casos de uso nuevos: un fichero cada uno, exportados en el barrel de la feature si existe.
 - [ ] Repositorio devuelve `Result<T>`; los errores llegan como `Failure`.
 - [ ] Servicios (`AiAssistantService`, etc.) solo a través de repositorio + caso de uso registrados en DI.
 - [ ] Tests añadidos o actualizados (ver §4).
-- [ ] Sin código nuevo en carpetas heredadas.
+- [ ] Ninguna carpeta nueva en `lib/` fuera de `core/`, `features/` y `shared/`.
 
 ## 4. Tests mínimos por feature
 
@@ -78,10 +77,8 @@ Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stab
 
 ## 7. Deuda conocida (revisar y actualizar al cerrar cada CA-x)
 
-Estado de `main` a 2026-10-25 (CA-0…CA-5 fusionadas):
+Estado de `main` a 2026-10-25 (CA-0…CA-6 fusionadas, migración terminada):
 
-- `ProjectsRemoteDataSource` y `TasksRemoteDataSource` siguen adaptando los modelos de `lib/models/` a través de `TaskboardDataSource`. El borrado de `models/task.dart` (de CA-2) y de los modelos de projects (de CA-3) se trasladó a CA-6.
-- `ProjectAiChatPanel` conserva el modo `create` (plan de un proyecto nuevo), que ninguna pantalla abre. Decidir en CA-6 si se borra junto con `SuggestProjectPlan`.
-- Borrado final de `lib/blocs`, `lib/models`, `lib/services` → CA-6.
+- `intl` y `path_provider` siguen en `pubspec.yaml` sin usarse en `lib/`.
 
 Al resolver un punto, quitarlo de esta lista en el mismo commit.

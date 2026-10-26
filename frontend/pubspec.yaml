@@ -39,9 +39,6 @@ dependencies:
   go_router: ^16.2.0
   equatable: ^2.0.7
   
-  # Serialización JSON
-  json_annotation: ^4.9.0
-  
   # Persistencia de datos
   shared_preferences: ^2.2.2
   path_provider: ^2.1.2
@@ -63,10 +60,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  build_runner: ^2.7.0
-  json_serializable: ^6.11.0
   bloc_test: ^10.0.0
-  mockito: ^5.4.4
   mocktail: ^1.0.4
 
 # For information on the generic Dart part of this file, see the

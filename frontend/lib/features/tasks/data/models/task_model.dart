@@ -1,6 +1,7 @@
 import '../../domain/entities/task.dart';
 
-/// DTO JSON de tarea (formato API / almacenamiento local legacy).
+/// DTO de tarea: JSON local (camelCase) con [TaskModel.fromJson] y JSON del API
+/// (snake_case) con [TaskModel.fromApiJson].
 class SubtaskModel {
   const SubtaskModel({
     required this.id,
@@ -148,7 +149,77 @@ class TaskModel {
         updatedAt: task.updatedAt,
       );
 
-  /// Puente con el modelo legacy en `lib/models/task.dart` (TaskboardDataSource).
-  factory TaskModel.fromLegacyJson(Map<String, dynamic> json) =>
-      TaskModel.fromJson(json);
+  /// Formato del API (snake_case). Las subtareas aceptan `isDone` o `is_done`.
+  factory TaskModel.fromApiJson(Map<String, dynamic> m) {
+    final subsRaw = m['subtasks'];
+    final tagsRaw = m['tags'];
+    return TaskModel.fromJson({
+      'id': m['id'],
+      'projectId': m['project_id'],
+      'title': m['title'],
+      'description': m['description'],
+      'status': m['status'],
+      'dueDate': m['due_date'],
+      'kanbanPosition': m['kanban_position'],
+      'estimatedHours': m['estimated_hours'],
+      'complexity': m['complexity'],
+      'tags': tagsRaw is List ? tagsRaw : const <String>[],
+      'subtasks': subsRaw is List
+          ? subsRaw
+              .whereType<Map>()
+              .map(
+                (e) => {
+                  'id': (e['id'] as num?)?.toInt() ?? 0,
+                  'title': (e['title'] ?? '').toString(),
+                  'isDone': e['isDone'] as bool? ?? e['is_done'] as bool? ?? false,
+                },
+              )
+              .toList()
+          : const <Map<String, dynamic>>[],
+      'createdAt': m['created_at'],
+      'updatedAt': m['updated_at'],
+    });
+  }
+
+  /// Cuerpo de `PUT /api/tasks` (crea o actualiza por `id`).
+  Map<String, dynamic> toApiJson() => {
+        'id': id,
+        'project_id': projectId,
+        'title': title,
+        'description': description,
+        'status': status.dbValue,
+        'due_date': dueDate?.toIso8601String(),
+        'kanban_position': kanbanPosition,
+        'estimated_hours': estimatedHours,
+        'complexity': complexity.dbValue,
+        'tags': tags,
+        'subtasks': subtasks
+            .map(
+              (s) => {
+                'id': s.id,
+                'title': s.title,
+                'isDone': s.isDone,
+                'is_done': s.isDone,
+              },
+            )
+            .toList(),
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+
+  TaskModel copyWith({int? id, DateTime? updatedAt}) => TaskModel(
+        id: id ?? this.id,
+        projectId: projectId,
+        title: title,
+        description: description,
+        status: status,
+        dueDate: dueDate,
+        kanbanPosition: kanbanPosition,
+        estimatedHours: estimatedHours,
+        complexity: complexity,
+        tags: tags,
+        subtasks: subtasks,
+        createdAt: createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
 }

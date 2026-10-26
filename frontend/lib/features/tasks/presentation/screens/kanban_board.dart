@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../blocs/blocs.dart';
+import '../../../projects/presentation/bloc/projects_bloc.dart';
+import '../bloc/tasks_bloc.dart';
 import '../../../projects/domain/entities/project.dart';
 import '../../domain/entities/task.dart';
 import '../../../../shared/themes/app_theme.dart';
@@ -10,7 +11,7 @@ import '../../../ai_assistant/presentation/widgets/project_ai_chat_sheet.dart';
 import '../../../projects/presentation/widgets/project_screen_title.dart';
 import '../../../projects/presentation/widgets/open_in_cursor_button.dart';
 import '../widgets/task_detail_sheet.dart';
-import '../../../../utils/export_taskboard_md.dart';
+import '../../../projects/presentation/utils/export_taskboard_md_action.dart';
 import '../../../projects/presentation/widgets/ide_cursor_session_sheet.dart';
 
 class KanbanBoard extends StatefulWidget {

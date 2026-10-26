@@ -59,11 +59,11 @@ jobs:
         run: scripts/flutter-check.sh --no-test --base "origin/$BASE_REF"
       - name: flutter test
         run: flutter test --coverage
-      - name: Resumen cobertura (lcov)
+      - name: Cobertura por capa
         if: always()
+        working-directory: .
         run: |
-          if [ -f coverage/lcov.info ]; then
-            echo "coverage/lcov.info generado ($(wc -l < coverage/lcov.info) líneas)"
-          else
-            echo "Sin coverage/lcov.info"
-          fi
+          {
+            echo "### Cobertura del frontend por capa"
+            python3 scripts/coverage_by_layer.py frontend/coverage/lcov.info || true
+          } | tee -a "$GITHUB_STEP_SUMMARY"
