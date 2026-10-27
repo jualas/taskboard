@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import time
 from typing import Any
 
 import httpx
@@ -51,6 +52,7 @@ Reglas:
 La primera entrada de "tasks" es la única que se usará."""
 
 SYSTEM_PROMPT_PROJECT_PLAN = """Eres un arquitecto de backlog ágil. Descomponer el proyecto en MUCHAS tareas de tablero (10-14, mínimo 8).
+Si el usuario pide un número concreto de tareas, genera exactamente ese número.
 
 Responde SOLO con JSON válido:
 {"tasks":[{"title":"...","description":"...","complexity":"simple|medium|complex","estimatedHours":null o entero,"tags":[],"subtasks":[]}, ...]}
@@ -65,6 +67,7 @@ Responde SOLO con JSON válido:
 
 - "message": respuesta clara en español.
 - "tasks": null si solo preguntan; lista COMPLETA actualizada si piden cambios al backlog o alinear kanban con el repo.
+- Si el usuario pide un número concreto de tareas, la lista tiene exactamente ese número.
 - Si piden implementar o alinear: actualiza "tasks" con el borrador corregido (estados, títulos, nuevas tareas, archivar obsoletas).
   En "message" resume cambios en tablero y, si aplica, pasos concretos en el repo (commits, docs); el tablero se aplica con el botón de la UI.
 - Si hay contexto de workspace (git/docker), úsalo para comentar coherencia entre código y tareas.
@@ -172,7 +175,7 @@ async def suggest_tasks(
             f"Nombre del proyecto: {title or '(sin título)'}\n"
             f"Descripción:\n{desc or '(sin descripción)'}\n\n"
             f"Detalles extra:\n{user_msg or '(inferir según el dominio)'}\n\n"
-            "Genera backlog 10-14 tareas cubriendo fases ágiles."
+            "Genera el backlog cubriendo fases ágiles (10-14 tareas salvo que se pida otro número)."
         )
         system = SYSTEM_PROMPT_PROJECT_PLAN
         long_output = True
@@ -184,7 +187,7 @@ async def suggest_tasks(
         system = SYSTEM_PROMPT
         long_output = False
 
-    if settings.cursor_agent_enabled:
+    if _agent_possible():
         long_output = True
 
     messages = [
@@ -279,7 +282,7 @@ async def chat_project_plan(
         ws_path = (ws_val or "").strip()
 
     long_output = (
-        settings.cursor_agent_enabled
+        _agent_possible()
         or not body.draftTasks
         or len(body.draftTasks) >= 6
         or align_request
@@ -297,7 +300,7 @@ async def chat_project_plan(
     except TimeoutError as e:
         raise HTTPException(
             status.HTTP_504_GATEWAY_TIMEOUT,
-            f"Cursor Agent: {e!s}",
+            f"El asistente IA tardó demasiado: {e!s}",
         ) from e
     except Exception as e:
         logger.exception("ai.chat falló")
@@ -462,7 +465,8 @@ async def _invoke_llm(
 ) -> dict[str, Any]:
     # Cursor Agent lee (y con execute, escribe) en disco del servidor: solo administradores.
     ws = resolve_workspace_path(workspace_path) if allow_agent else ""
-    if settings.cursor_agent_enabled and ws:
+    engine = _select_engine(agent_ready=bool(ws) and settings.cursor_agent_enabled)
+    if engine == "cursor_agent":
         try:
             raw = await run_cursor_agent_messages(
                 messages,
@@ -479,7 +483,7 @@ async def _invoke_llm(
         except TimeoutError as e:
             raise HTTPException(
                 status.HTTP_504_GATEWAY_TIMEOUT,
-                f"Cursor Agent: {e!s}",
+                f"El asistente IA tardó demasiado: {e!s}",
             ) from e
         except Exception as e:
             logger.warning("Cursor agent falló: %s", e)
@@ -489,23 +493,59 @@ async def _invoke_llm(
                     "Cursor Agent CLI falló (detalle en los logs del API)",
                 ) from e
             logger.info("Cursor agent: usando fallback DeepSeek/Ollama")
+            engine = _select_engine(agent_ready=False, fallback=True)
 
-    if settings.deepseek_api_key.strip():
+    if engine == "deepseek":
         return await _call_deepseek(messages, long_output=long_output, chat=chat)
-    if settings.ollama_base_url.strip():
+    if engine == "local":
         return await _call_ollama(messages, long_output=long_output, chat=chat)
     raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, _NO_ENGINE_ERROR)
 
 
-def available_engine(*, allow_agent: bool) -> str | None:
-    """Motor que usaría _invoke_llm para este usuario, o None si no hay ninguno."""
-    if settings.cursor_agent_enabled and allow_agent and resolve_workspace_path(""):
+_ENGINES = ("auto", "deepseek", "ollama", "agent")
+
+
+def _configured_engine() -> str:
+    engine = (settings.ai_engine or "auto").strip().lower()
+    if engine not in _ENGINES:
+        logger.warning("AI_ENGINE=%r no válido; se usa auto", engine)
+        return "auto"
+    return engine
+
+
+def _agent_possible() -> bool:
+    """Si suggest/chat pueden acabar en el agente (que necesita más tiempo y salida)."""
+    return settings.cursor_agent_enabled and _configured_engine() in ("auto", "agent")
+
+
+def _select_engine(*, agent_ready: bool, fallback: bool = False) -> str | None:
+    """Motor de suggest/chat según AI_ENGINE; None si el elegido no está configurado.
+
+    Con `fallback` (el agente acaba de fallar) se elige entre DeepSeek y Ollama aunque
+    AI_ENGINE sea agent.
+    """
+    engine = _configured_engine()
+    deepseek = bool(settings.deepseek_api_key.strip())
+    local = bool(settings.ollama_base_url.strip())
+    if engine == "agent" and not fallback:
+        return "cursor_agent" if agent_ready else None
+    if engine == "deepseek":
+        return "deepseek" if deepseek else None
+    if engine == "ollama":
+        return "local" if local else None
+    if agent_ready:
         return "cursor_agent"
-    if settings.deepseek_api_key.strip():
+    if deepseek:
         return "deepseek"
-    if settings.ollama_base_url.strip():
+    if local:
         return "local"
     return None
+
+
+def available_engine(*, allow_agent: bool) -> str | None:
+    """Motor que usaría _invoke_llm para este usuario, o None si no hay ninguno."""
+    agent_ready = settings.cursor_agent_enabled and allow_agent and bool(resolve_workspace_path(""))
+    return _select_engine(agent_ready=agent_ready)
 
 
 @router.get("/status")
@@ -527,9 +567,8 @@ async def _call_deepseek(
         "model": settings.deepseek_model,
         "messages": messages,
         "response_format": {"type": "json_object"},
+        "max_tokens": settings.deepseek_max_tokens_plan if long_output else settings.deepseek_max_tokens,
     }
-    if long_output:
-        payload["max_tokens"] = 8192
     headers = {"Authorization": f"Bearer {settings.deepseek_api_key}"}
     read_sec = (
         float(settings.deepseek_timeout_plan_sec)
@@ -537,9 +576,16 @@ async def _call_deepseek(
         else float(settings.deepseek_timeout_sec)
     )
     timeout = httpx.Timeout(connect=30.0, read=read_sec, write=60.0, pool=30.0)
+    started = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             r = await client.post(url, json=payload, headers=headers)
+    except httpx.TimeoutException as e:
+        logger.warning("DeepSeek: tiempo agotado tras %.0f s", time.monotonic() - started)
+        raise HTTPException(
+            status.HTTP_504_GATEWAY_TIMEOUT,
+            "El proveedor de IA tardó demasiado. Divide la petición o inténtalo de nuevo.",
+        ) from e
     except httpx.RequestError as e:
         logger.warning("DeepSeek: error de conexión: %s", e)
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "No se pudo conectar con el proveedor de IA") from e
@@ -550,8 +596,26 @@ async def _call_deepseek(
             f"El proveedor de IA respondió con error ({r.status_code}); detalle en los logs del API",
         )
     data = r.json()
+    usage = data.get("usage") or {}
+    # Solo métricas: ni el contenido ni la clave van a los logs.
+    logger.info(
+        "DeepSeek: modelo=%s tokens_entrada=%s tokens_salida=%s fin=%s ms=%d",
+        data.get("model") or settings.deepseek_model,
+        usage.get("prompt_tokens"),
+        usage.get("completion_tokens"),
+        data["choices"][0].get("finish_reason"),
+        (time.monotonic() - started) * 1000,
+    )
     content = data["choices"][0]["message"]["content"]
-    parsed = _parse_chat_json(content) if chat else _parse_tasks_json(content)
+    try:
+        parsed = _parse_chat_json(content) if chat else _parse_tasks_json(content)
+    except HTTPException as e:
+        if data["choices"][0].get("finish_reason") == "length":
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY,
+                "La respuesta de la IA se cortó por el límite de tokens. Pide menos tareas o divide la petición.",
+            ) from e
+        raise
     parsed["provider"] = "deepseek"
     return parsed
 
@@ -634,6 +698,9 @@ def _load_json_object(content: str | None) -> Any:
     except json.JSONDecodeError:
         start = text.find("{")
         if start < 0:
-            raise HTTPException(status.HTTP_502_BAD_GATEWAY, "JSON no parseable")
-        obj, _ = json.JSONDecoder().raw_decode(text, start)
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, "JSON no parseable") from None
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(text, start)
+        except json.JSONDecodeError:
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, "JSON no parseable") from None
         return obj

@@ -48,13 +48,16 @@ sequenceDiagram
   API-->>App: JSON normalizado
 ```
 
-**Prioridad del motor IA** (en `backend/app/routers/ai.py`, función `_invoke_llm`):
+**Motor de «Sugerir con IA» y del chat** (`AI_ENGINE`, en `backend/app/routers/ai.py`, función `_select_engine`):
+
+- `AI_ENGINE=deepseek`, `ollama` o `agent`: se usa solo ese motor. Si no está configurado (sin clave, sin URL o el usuario no es administrador de workspace en el caso de `agent`), la petición devuelve 503 y la UI avisa.
+- `AI_ENGINE=auto` (por defecto): el primero disponible en este orden:
 
 1. **Cursor Agent CLI** — si `CURSOR_AGENT_ENABLED=true` y hay carpeta workspace resuelta (la del proyecto, o `CURSOR_AGENT_DEFAULT_WORKSPACE` en sugerencias sin proyecto).
 2. **DeepSeek (nube)** — si `DEEPSEEK_API_KEY` tiene valor.
 3. **Ollama** — si DeepSeek no está configurado (`OLLAMA_BASE_URL`, `LOCAL_LLM_MODEL`).
 
-El campo `provider` en la respuesta indica cuál se usó: `cursor_agent`, `deepseek` o `local`.
+El campo `provider` en la respuesta indica cuál se usó: `cursor_agent`, `deepseek` o `local`. El modo Agent del panel (`/api/ai/agent-stream`) no depende de `AI_ENGINE`.
 
 ## 3) Componentes en el código
 
@@ -161,8 +164,12 @@ Caddy tiene **read_timeout / write_timeout de 1200 s** para peticiones IA largas
 2. En `/mnt/datos/docker/taskboard-api/.env`:
 
    ```env
+   AI_ENGINE=deepseek
    DEEPSEEK_API_KEY=sk-...
    DEEPSEEK_MODEL=deepseek-chat
+   # Tope de tokens de salida por llamada (normal / plan de proyecto)
+   DEEPSEEK_MAX_TOKENS=4096
+   DEEPSEEK_MAX_TOKENS_PLAN=8192
    ```
 
 3. Reinicia el contenedor API.
@@ -173,6 +180,8 @@ Caddy tiene **read_timeout / write_timeout de 1200 s** para peticiones IA largas
    ```
 
 Si `DEEPSEEK_API_KEY` tiene valor, el backend **no** usa Ollama salvo fallback explícito tras fallo de Cursor Agent (`CURSOR_AGENT_FALLBACK_LLM=true`).
+
+Cada llamada deja en el log del API una línea `DeepSeek: modelo=… tokens_entrada=… tokens_salida=… fin=… ms=…`, sin el contenido ni la clave (`docker logs taskboard-api | grep DeepSeek`). Si `fin=length`, la respuesta se cortó por el tope de tokens y la UI pide dividir la petición.
 
 ### Ollama (local o remoto)
 

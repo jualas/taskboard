@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     # Vacío = nadie: el asistente usa solo DeepSeek/Ollama sin acceso a disco.
     workspace_admin_emails: str = ""
 
+    # Motor de «Sugerir con IA» y del chat: auto (orden agent → deepseek → ollama), deepseek,
+    # ollama o agent. El modo Agent del panel (/api/ai/agent-stream) no depende de este valor.
+    ai_engine: str = "auto"
+
     deepseek_api_key: str = ""
     deepseek_model: str = "deepseek-chat"
     deepseek_base_url: str = "https://api.deepseek.com"
@@ -40,6 +44,9 @@ class Settings(BaseSettings):
     ollama_timeout_sec: float = 180.0
     deepseek_timeout_plan_sec: float = 300.0
     deepseek_timeout_sec: float = 120.0
+    # Tope de tokens de salida por llamada (coste acotado).
+    deepseek_max_tokens: int = 4096
+    deepseek_max_tokens_plan: int = 8192
 
     # Rutas permitidas para workspace_path (separadas por coma). Deben montarse en el contenedor API.
     workspace_roots: str = (

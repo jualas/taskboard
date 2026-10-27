@@ -460,7 +460,7 @@ class _TaskFormState extends State<_TaskFormBody> {
     kRootScaffoldMessenger.currentState?.showSnackBar(
       const SnackBar(
         content: Text(
-          'Generando sugerencia con Cursor Agent… puede tardar un momento. '
+          'Generando sugerencia con IA… puede tardar un momento. '
           'No cierres esta ventana.',
         ),
         duration: Duration(seconds: 6),
@@ -506,7 +506,7 @@ class _TaskFormState extends State<_TaskFormBody> {
             content: const Text(
               'El servidor respondió bien, pero no hubo ninguna tarea con título válido. '
               'Suele deberse a un JSON incompleto del modelo o a títulos vacíos. '
-              'Prueba un brief más corto y concreto, o revisa los logs del API (Cursor Agent).',
+              'Prueba un brief más corto y concreto, o revisa los logs del API.',
             ),
             actions: [
               TextButton(

@@ -21,7 +21,7 @@ void main() {
       expect(d('Error IA (504): {"detail": "Tardó 20 min"}'), 'Tardó 20 min');
       expect(
         d('Error IA (504): Gateway Timeout'),
-        startsWith('Cursor Agent tardó demasiado'),
+        startsWith('El asistente IA tardó demasiado'),
       );
     });
 
@@ -30,7 +30,7 @@ void main() {
         describeAiFailure(
           const UnexpectedFailure('TimeoutException after 0:25:00'),
         ),
-        startsWith('La consulta al Cursor Agent tardó demasiado'),
+        startsWith('La consulta al asistente IA tardó demasiado'),
       );
     });
 
