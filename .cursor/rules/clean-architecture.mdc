@@ -8,7 +8,7 @@ alwaysApply: false
 
 Regla propia de este repo (no viene del hub Skills-Rules). Decisiones completas en `docs/architecture/clean-architecture.md`; si esta regla y el documento discrepan, manda el documento y hay que actualizar esta regla.
 
-**Antes de tocar `frontend/`, seguir el skill `flutter-clean-architecture`** (`.cursor/skills/flutter-clean-architecture/SKILL.md`): procedimiento, checklist, deuda conocida y verificación con `scripts/flutter-check.sh --vs-main` (raíz del repo).
+**Antes de tocar `frontend/`, seguir el skill `flutter-clean-architecture`** (`.cursor/skills/flutter-clean-architecture/SKILL.md`): procedimiento, checklist, deuda conocida y verificación con `scripts/flutter-check.sh --vs-main --strict` (raíz del repo).
 
 ## Regla de dependencias
 
@@ -32,7 +32,7 @@ Regla propia de este repo (no viene del hub Skills-Rules). Decisiones completas 
 
 - `lib/` solo tiene `core/`, `features/` (`ai_assistant`, `auth`, `projects`, `tasks`), `shared/` y `main.dart`; el test de arquitectura falla si aparece otra carpeta. La migración CA-0…CA-6 terminó y ya no hay código heredado.
 - `tasks` y `projects` tienen un data source del API y otro local (modo sin API); la elección se hace en DI. Una feature nueva que deba funcionar sin API sigue el mismo patrón.
-- Cada cambio: `scripts/flutter-check.sh --vs-main` sin avisos nuevos y tests en verde.
+- Cada cambio: `scripts/flutter-check.sh --vs-main --strict` sin avisos y tests en verde.
 
 ## Tests mínimos por feature
 

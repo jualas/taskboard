@@ -2,8 +2,9 @@
 # flutter analyze + flutter test del frontend (lo usan los agentes, las personas y el CI).
 #   --vs-main     compara los avisos con origin/main recién descargado (o main si no hay remoto)
 #   --base <ref>  compara con otra referencia (p. ej. origin/<rama base> de un PR)
+#   --strict      falla con cualquier aviso de analyze (como el CI, que ya no admite ninguno)
 #   --no-test     no ejecuta flutter test (el CI ya lo lanza con cobertura)
-# Falla si fallan los tests o si hay avisos de analyze nuevos respecto a la base.
+# Falla si fallan los tests, si hay avisos de analyze nuevos respecto a la base o, con --strict, si hay alguno.
 # Usa flutter local si existe; si no, la imagen Docker cirruslabs (y devuelve la propiedad de los ficheros).
 set -euo pipefail
 
@@ -11,7 +12,8 @@ ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 IMAGE="ghcr.io/cirruslabs/flutter:stable"
 BASE=""
 RUN_TESTS=1
-usage() { echo "uso: $0 [--vs-main | --base <ref>] [--no-test]" >&2; exit 2; }
+STRICT=0
+usage() { echo "uso: $0 [--vs-main | --base <ref>] [--strict] [--no-test]" >&2; exit 2; }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -23,6 +25,7 @@ while [[ $# -gt 0 ]]; do
         BASE="main"
       fi ;;
     --base) [[ $# -ge 2 ]] || usage; BASE="$2"; shift ;;
+    --strict) STRICT=1 ;;
     --no-test) RUN_TESTS=0 ;;
     *) usage ;;
   esac
@@ -53,6 +56,9 @@ mv "$ROOT/frontend/.analyze.txt" "$TMP/branch.txt"
 cat "$TMP/branch.txt"
 
 NEW_WARNINGS=0
+if [[ $STRICT -eq 1 && -s "$TMP/branch.txt" ]]; then
+  echo "== --strict: analyze tiene avisos"; NEW_WARNINGS=1
+fi
 if [[ -n "$BASE" ]]; then
   echo "== analyze en $BASE"
   WT="$TMP/base-wt"
