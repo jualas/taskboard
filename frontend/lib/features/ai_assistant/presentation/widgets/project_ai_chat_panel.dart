@@ -149,6 +149,8 @@ class _ProjectAiChatViewState extends State<_ProjectAiChatView> {
 
     if (_assistantMode == _AssistantMode.agent) {
       await _cubit.sendAgentMessage(text, execute: _agentExecute);
+      // Claude Code puede haber cambiado tareas del tablero con el MCP de TaskBoard.
+      if (mounted) widget.onTasksApplied?.call();
       return;
     }
 
@@ -317,7 +319,7 @@ class _ProjectAiChatViewState extends State<_ProjectAiChatView> {
                 ),
                 ButtonSegment(
                   value: _AssistantMode.agent,
-                  label: Text('Agent (CLI)'),
+                  label: Text('Claude Code'),
                   icon: Icon(Icons.terminal, size: 18),
                 ),
               ],
@@ -337,8 +339,8 @@ class _ProjectAiChatViewState extends State<_ProjectAiChatView> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text(
-              'Ejecuta el CLI Cursor Agent en la carpeta workspace del proyecto. '
-              'La salida aparece en vivo abajo (como un terminal).',
+              'Claude Code trabaja en el repositorio vinculado al proyecto y deja el '
+              'tablero al día. La salida aparece en vivo abajo (como un terminal).',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -760,11 +762,12 @@ class _ProjectAiChatViewState extends State<_ProjectAiChatView> {
                 dense: true,
                 controlAffinity: ListTileControlAffinity.leading,
                 title: const Text(
-                  'Permitir editar archivos en el repo (--force)',
+                  'Modo desarrollo: editar el repo y hacer commits',
                   style: TextStyle(fontSize: 13),
                 ),
                 subtitle: const Text(
-                  'Desactivado: solo lectura (modo ask). Activado: puede modificar código y docs.',
+                  'Desactivado: seguimiento (lee el repo y git, y actualiza el tablero). '
+                  'Activado: además edita, ejecuta tests y hace commits en una rama; nunca push.',
                   style: TextStyle(fontSize: 11),
                 ),
                 value: _agentExecute,
@@ -784,7 +787,7 @@ class _ProjectAiChatViewState extends State<_ProjectAiChatView> {
                     onSubmitted: (_) => _sendMessage(),
                     decoration: InputDecoration(
                       hintText: isAgent
-                          ? 'Instrucción para agent (p. ej. alinear STATUS.md y el tablero)…'
+                          ? 'Instrucción para Claude Code (p. ej. alinea el tablero con el repo)…'
                           : widget.mode == ProjectAiChatMode.create
                               ? 'Describe el proyecto o pide cambios…'
                               : 'Pide más tareas, prioridades o ajustes…',
@@ -806,7 +809,7 @@ class _ProjectAiChatViewState extends State<_ProjectAiChatView> {
                 const SizedBox(width: 8),
                 IconButton.filled(
                   onPressed: _chat.isLoading ? null : _sendMessage,
-                  tooltip: isAgent ? 'Ejecutar agent' : 'Enviar',
+                  tooltip: isAgent ? 'Ejecutar Claude Code' : 'Enviar',
                   icon: Icon(isAgent ? Icons.play_arrow : Icons.send),
                 ),
               ],

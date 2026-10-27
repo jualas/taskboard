@@ -112,7 +112,7 @@ class AiAssistantRepositoryImpl implements AiAssistantRepository {
     if (remote == null) {
       yield const ResultFailure(
         UnexpectedFailure(
-          'Cursor Agent no disponible: configura la API Taskboard.',
+          'Claude Code no disponible: configura la API Taskboard.',
         ),
       );
       return;

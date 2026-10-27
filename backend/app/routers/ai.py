@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import time
+from datetime import timedelta
 from typing import Any
 
 import httpx
@@ -15,13 +16,10 @@ from ..agent_sessions import (
     list_agent_runs,
     upsert_project_agent_session,
 )
+from ..claude_code import claude_code_ready, resolve_workspace_path, run_claude_code, stream_claude_code
 from ..config import settings
-from ..cursor_agent import (
-    parse_llm_json,
-    resolve_workspace_path,
-    run_cursor_agent_messages,
-    stream_cursor_agent,
-)
+from ..llm_text import messages_to_prompt, parse_llm_json
+from ..security import create_access_token
 from ..deps import CurrentUser, DbConn
 from ..permissions import is_workspace_admin, require_view, require_workspace_admin
 from ..prompt_safety import DATA_NOTICE, new_boundary, wrap_untrusted
@@ -329,11 +327,11 @@ async def agent_stream(
     conn: DbConn,
     user: CurrentUser,
 ) -> StreamingResponse:
-    """Stream en vivo del CLI Cursor Agent (terminal integrado en el asistente)."""
-    if not settings.cursor_agent_enabled:
+    """Stream en vivo de Claude Code sobre el repo del proyecto (seguimiento o desarrollo)."""
+    if not claude_code_ready():
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Cursor Agent CLI no está habilitado en el API.",
+            "Claude Code no está habilitado en el API.",
         )
     await require_workspace_admin(conn, user)
 
@@ -381,10 +379,17 @@ async def agent_stream(
                     ensure_ascii=False,
                 )
                 yield f"data: {meta}\n\n"
-            async for event in stream_cursor_agent(
+            # JWT corto del propio usuario para el MCP de TaskBoard: el agente solo ve lo que él ve.
+            api_token = create_access_token(
+                str(user),
+                expires_in=timedelta(minutes=settings.claude_code_token_minutes),
+            )
+            async for event in stream_claude_code(
                 full_prompt,
                 workspace=ws_path,
                 execute=body.execute,
+                project_id=pid,
+                api_token=api_token,
                 resume_session_id=resume_id,
             ):
                 sid = (event.get("session_id") or "").strip()
@@ -406,13 +411,13 @@ async def agent_stream(
             had_error = True
             result_preview = str(e)
             logger.warning("agent-stream: %s", e)
-            err = json.dumps({"kind": "error", "text": "Cursor Agent CLI no encontrado en el servidor"}, ensure_ascii=False)
+            err = json.dumps({"kind": "error", "text": "Claude Code o la carpeta del proyecto no están en el servidor"}, ensure_ascii=False)
             yield f"data: {err}\n\n"
         except TimeoutError as e:
             had_error = True
             result_preview = str(e)
             logger.warning("agent-stream: %s", e)
-            err = json.dumps({"kind": "error", "text": "Cursor Agent: tiempo de espera agotado"}, ensure_ascii=False)
+            err = json.dumps({"kind": "error", "text": "Claude Code: tiempo de espera agotado"}, ensure_ascii=False)
             yield f"data: {err}\n\n"
         except Exception as e:
             had_error = True
@@ -463,22 +468,18 @@ async def _invoke_llm(
     workspace_path: str = "",
     allow_agent: bool = False,
 ) -> dict[str, Any]:
-    # Cursor Agent lee (y con execute, escribe) en disco del servidor: solo administradores.
+    # Claude Code lee el disco del servidor: solo administradores.
     ws = resolve_workspace_path(workspace_path) if allow_agent else ""
-    engine = _select_engine(agent_ready=bool(ws) and settings.cursor_agent_enabled)
-    if engine == "cursor_agent":
+    engine = _select_engine(agent_ready=bool(ws) and claude_code_ready())
+    if engine == "claude_code":
         try:
-            raw = await run_cursor_agent_messages(
-                messages,
-                workspace=ws,
-                long_output=long_output,
-            )
+            raw = await run_claude_code(messages_to_prompt(messages), workspace=ws)
             parsed = parse_llm_json(raw)
             if chat:
                 out = _parse_chat_json_from_obj(parsed)
             else:
                 out = _parse_tasks_json_from_obj(parsed)
-            out["provider"] = "cursor_agent"
+            out["provider"] = "claude_code"
             return out
         except TimeoutError as e:
             raise HTTPException(
@@ -486,13 +487,13 @@ async def _invoke_llm(
                 f"El asistente IA tardó demasiado: {e!s}",
             ) from e
         except Exception as e:
-            logger.warning("Cursor agent falló: %s", e)
-            if not settings.cursor_agent_fallback_llm:
+            logger.warning("Claude Code falló: %s", e)
+            if not settings.agent_fallback_llm:
                 raise HTTPException(
                     status.HTTP_502_BAD_GATEWAY,
-                    "Cursor Agent CLI falló (detalle en los logs del API)",
+                    "Claude Code falló (detalle en los logs del API)",
                 ) from e
-            logger.info("Cursor agent: usando fallback DeepSeek/Ollama")
+            logger.info("Claude Code: usando fallback DeepSeek/Ollama")
             engine = _select_engine(agent_ready=False, fallback=True)
 
     if engine == "deepseek":
@@ -515,7 +516,7 @@ def _configured_engine() -> str:
 
 def _agent_possible() -> bool:
     """Si suggest/chat pueden acabar en el agente (que necesita más tiempo y salida)."""
-    return settings.cursor_agent_enabled and _configured_engine() in ("auto", "agent")
+    return claude_code_ready() and _configured_engine() in ("auto", "agent")
 
 
 def _select_engine(*, agent_ready: bool, fallback: bool = False) -> str | None:
@@ -528,13 +529,13 @@ def _select_engine(*, agent_ready: bool, fallback: bool = False) -> str | None:
     deepseek = bool(settings.deepseek_api_key.strip())
     local = bool(settings.ollama_base_url.strip())
     if engine == "agent" and not fallback:
-        return "cursor_agent" if agent_ready else None
+        return "claude_code" if agent_ready else None
     if engine == "deepseek":
         return "deepseek" if deepseek else None
     if engine == "ollama":
         return "local" if local else None
     if agent_ready:
-        return "cursor_agent"
+        return "claude_code"
     if deepseek:
         return "deepseek"
     if local:
@@ -544,7 +545,7 @@ def _select_engine(*, agent_ready: bool, fallback: bool = False) -> str | None:
 
 def available_engine(*, allow_agent: bool) -> str | None:
     """Motor que usaría _invoke_llm para este usuario, o None si no hay ninguno."""
-    agent_ready = settings.cursor_agent_enabled and allow_agent and bool(resolve_workspace_path(""))
+    agent_ready = claude_code_ready() and allow_agent and bool(resolve_workspace_path(""))
     return _select_engine(agent_ready=agent_ready)
 
 

@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-/// Sesión Cursor Agent persistida por proyecto.
+/// Sesión de Claude Code persistida por proyecto.
 class AgentSession extends Equatable {
   const AgentSession({
     required this.projectId,
@@ -56,7 +56,7 @@ class AgentRun extends Equatable {
   ];
 }
 
-/// Evento del stream SSE del CLI Cursor Agent.
+/// Evento del stream SSE de Claude Code.
 class AgentStreamEvent extends Equatable {
   const AgentStreamEvent({required this.kind, this.text = '', this.sessionId});
 

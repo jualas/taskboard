@@ -50,11 +50,7 @@ void main() {
       );
     });
 
-    test('502 con sesión de agent caducada', () {
-      expect(
-        d('Error IA (502): Authentication required'),
-        startsWith('Cursor Agent: sesión no válida'),
-      );
+    test('502 sin detail', () {
       expect(d('Error IA (502): boom'), startsWith('Error 502'));
     });
 

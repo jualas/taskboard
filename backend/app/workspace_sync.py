@@ -12,7 +12,6 @@ import httpx
 
 from .config import settings
 from .prompt_safety import DATA_NOTICE, new_boundary, wrap_untrusted
-from .cursor_agent import parse_llm_json, run_cursor_agent
 from .workspace import build_workspace_snapshot
 
 logger = logging.getLogger(__name__)
@@ -174,17 +173,8 @@ async def _call_llm_for_suggestions(
     *,
     workspace_path: str = "",
 ) -> list[dict[str, Any]]:
-    prompt = f"{SYNC_SYSTEM_PROMPT}\n\n{DATA_NOTICE}\n\n{user_content}"
-    path = (workspace_path or "").strip()
-
-    if settings.cursor_agent_enabled and path:
-        try:
-            raw = await run_cursor_agent(prompt, workspace=path, mode=settings.cursor_agent_mode)
-            parsed = parse_llm_json(raw)
-            return _normalize_suggestion_rows(parsed)
-        except Exception as e:
-            logger.warning("Cursor agent workspace suggestions falló: %s", e)
-
+    # Las sugerencias periódicas van a DeepSeek u Ollama: Claude Code solo se lanza a petición.
+    _ = workspace_path
     messages = [
         {"role": "system", "content": f"{SYNC_SYSTEM_PROMPT}\n\n{DATA_NOTICE}"},
         {"role": "user", "content": user_content},

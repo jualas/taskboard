@@ -13,7 +13,7 @@ import '../utils/ai_error_messages.dart';
 
 enum ProjectAiChatMode { create, existing }
 
-/// Burbuja del chat: `user`, `assistant` o `terminal` (salida de Cursor Agent).
+/// Burbuja del chat: `user`, `assistant` o `terminal` (salida de Claude Code).
 class AiChatEntry extends Equatable {
   const AiChatEntry({
     required this.role,
@@ -113,7 +113,7 @@ class ProjectAiChatState extends Equatable {
   ];
 }
 
-/// Chat del asistente IA de un proyecto: planificar tareas o ejecutar Cursor Agent.
+/// Chat del asistente IA de un proyecto: planificar tareas o ejecutar Claude Code.
 class ProjectAiChatCubit extends Cubit<ProjectAiChatState> {
   ProjectAiChatCubit({
     required SuggestProjectPlan suggestProjectPlan,
@@ -295,7 +295,7 @@ class ProjectAiChatCubit extends Cubit<ProjectAiChatState> {
     emit(
       state.copyWith(
         isLoading: true,
-        providerLabel: 'Cursor Agent',
+        providerLabel: 'Claude Code',
         entries: [
           ...state.entries,
           AiChatEntry(role: 'user', content: text),

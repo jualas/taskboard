@@ -5,8 +5,8 @@ import 'ai_task_suggestion.dart';
 /// Nombre visible del proveedor IA que respondió.
 String aiProviderLabel(String? provider) {
   switch (provider) {
-    case 'cursor_agent':
-      return 'Cursor Agent';
+    case 'claude_code':
+      return 'Claude Code';
     case 'deepseek':
       return 'DeepSeek (nube)';
     case 'local':
