@@ -24,8 +24,13 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(_pw_bytes(password), bcrypt.gensalt()).decode("utf-8")
 
 
-def create_access_token(sub: str, extra: dict[str, Any] | None = None) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.jwt_expire_days)
+def create_access_token(
+    sub: str,
+    extra: dict[str, Any] | None = None,
+    *,
+    expires_in: timedelta | None = None,
+) -> str:
+    expire = datetime.now(timezone.utc) + (expires_in or timedelta(days=settings.jwt_expire_days))
     payload: dict[str, Any] = {"sub": sub, "exp": expire}
     if extra:
         payload.update(extra)

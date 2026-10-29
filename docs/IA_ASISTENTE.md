@@ -1,5 +1,7 @@
 # Asistente IA para tareas (TaskBoard)
 
+> Octubre de 2026: el CLI de Cursor Agent se ha sustituido por **Claude Code** en el modo Agent del panel y en el motor `agent`. Ver [CLAUDE_CODE_AGENTE.md](CLAUDE_CODE_AGENTE.md). Las menciones a Cursor Agent que quedan abajo describen la versión anterior; las variables `CURSOR_AGENT_*` ya no se leen. «Abrir en Cursor» y el prompt para el IDE no cambian.
+
 Documentación de la funcionalidad que ayuda a **redactar, planificar y alinear tareas** con el código del proyecto, usando la **API TaskBoard (FastAPI)** como único backend de IA.
 
 ## 1) Qué hace el usuario
@@ -53,11 +55,11 @@ sequenceDiagram
 - `AI_ENGINE=deepseek`, `ollama` o `agent`: se usa solo ese motor. Si no está configurado (sin clave, sin URL o el usuario no es administrador de workspace en el caso de `agent`), la petición devuelve 503 y la UI avisa.
 - `AI_ENGINE=auto` (por defecto): el primero disponible en este orden:
 
-1. **Cursor Agent CLI** — si `CURSOR_AGENT_ENABLED=true` y hay carpeta workspace resuelta (la del proyecto, o `CURSOR_AGENT_DEFAULT_WORKSPACE` en sugerencias sin proyecto).
+1. **Claude Code** — si `CLAUDE_CODE_ENABLED=true`, hay token y carpeta workspace resuelta (la del proyecto, o `CLAUDE_CODE_DEFAULT_WORKSPACE` en sugerencias sin proyecto).
 2. **DeepSeek (nube)** — si `DEEPSEEK_API_KEY` tiene valor.
 3. **Ollama** — si DeepSeek no está configurado (`OLLAMA_BASE_URL`, `LOCAL_LLM_MODEL`).
 
-El campo `provider` en la respuesta indica cuál se usó: `cursor_agent`, `deepseek` o `local`. El modo Agent del panel (`/api/ai/agent-stream`) no depende de `AI_ENGINE`.
+El campo `provider` en la respuesta indica cuál se usó: `claude_code`, `deepseek` o `local`. El modo Agent del panel (`/api/ai/agent-stream`) no depende de `AI_ENGINE`.
 
 ## 3) Componentes en el código
 

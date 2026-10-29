@@ -15,7 +15,7 @@ MESSAGES = [{"role": "user", "content": "hola"}]
 
 @pytest.fixture
 def no_engines(monkeypatch):
-    monkeypatch.setattr(settings, "cursor_agent_enabled", False)
+    monkeypatch.setattr(settings, "claude_code_enabled", False)
     monkeypatch.setattr(settings, "deepseek_api_key", "")
     monkeypatch.setattr(settings, "ollama_base_url", "")
     monkeypatch.setattr(settings, "ai_engine", "auto")
@@ -34,10 +34,11 @@ def test_engine_order(no_engines, monkeypatch):
     assert ai.available_engine(allow_agent=False) == "local"
     monkeypatch.setattr(settings, "deepseek_api_key", "test-key")
     assert ai.available_engine(allow_agent=False) == "deepseek"
-    monkeypatch.setattr(settings, "cursor_agent_enabled", True)
-    monkeypatch.setattr(settings, "cursor_agent_default_workspace", "/tmp/ws")
+    monkeypatch.setattr(settings, "claude_code_enabled", True)
+    monkeypatch.setattr(settings, "claude_code_oauth_token", "test-token")
+    monkeypatch.setattr(settings, "claude_code_default_workspace", "/tmp/ws")
     assert ai.available_engine(allow_agent=False) == "deepseek"
-    assert ai.available_engine(allow_agent=True) == "cursor_agent"
+    assert ai.available_engine(allow_agent=True) == "claude_code"
 
 
 def _mock_transport(monkeypatch, handler):
@@ -76,17 +77,18 @@ def test_connection_error_does_not_leak_address(no_engines, monkeypatch):
 def test_ai_engine_explicit_choice(no_engines, monkeypatch):
     monkeypatch.setattr(settings, "deepseek_api_key", "test-key")
     monkeypatch.setattr(settings, "ollama_base_url", "http://ollama:11434")
-    monkeypatch.setattr(settings, "cursor_agent_enabled", True)
-    monkeypatch.setattr(settings, "cursor_agent_default_workspace", "/tmp/ws")
+    monkeypatch.setattr(settings, "claude_code_enabled", True)
+    monkeypatch.setattr(settings, "claude_code_oauth_token", "test-token")
+    monkeypatch.setattr(settings, "claude_code_default_workspace", "/tmp/ws")
     monkeypatch.setattr(settings, "ai_engine", "deepseek")
     assert ai.available_engine(allow_agent=True) == "deepseek"
     monkeypatch.setattr(settings, "ai_engine", "ollama")
     assert ai.available_engine(allow_agent=True) == "local"
     monkeypatch.setattr(settings, "ai_engine", "agent")
-    assert ai.available_engine(allow_agent=True) == "cursor_agent"
+    assert ai.available_engine(allow_agent=True) == "claude_code"
     assert ai.available_engine(allow_agent=False) is None
     monkeypatch.setattr(settings, "ai_engine", "otro")
-    assert ai.available_engine(allow_agent=True) == "cursor_agent"
+    assert ai.available_engine(allow_agent=True) == "claude_code"
 
 
 def test_explicit_engine_without_key_is_unavailable(no_engines, monkeypatch):

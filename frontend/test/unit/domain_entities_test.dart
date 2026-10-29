@@ -83,7 +83,7 @@ void main() {
   });
 
   test('proveedor IA y sesión agent', () {
-    expect(aiProviderLabel('cursor_agent'), 'Cursor Agent');
+    expect(aiProviderLabel('claude_code'), 'Claude Code');
     expect(aiProviderLabel('deepseek'), 'DeepSeek (nube)');
     expect(aiProviderLabel(null), 'IA');
     final session = AgentSession(

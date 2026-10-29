@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # Swagger/OpenAPI (/docs, /openapi.json): desactivado salvo que se pida.
     enable_docs: bool = False
 
-    # Correos (separados por coma) que pueden usar carpetas del servidor y Cursor Agent.
+    # Correos (separados por coma) que pueden usar carpetas del servidor y Claude Code.
     # Vacío = nadie: el asistente usa solo DeepSeek/Ollama sin acceso a disco.
     workspace_admin_emails: str = ""
 
@@ -62,22 +62,28 @@ class Settings(BaseSettings):
     workspace_snapshot_interval_min: int = 30
     workspace_ai_suggestions: bool = True
 
-    # Cursor CLI Agent (`agent --print`) en el mini PC — prioridad sobre DeepSeek/Ollama
-    cursor_agent_enabled: bool = False
-    cursor_agent_bin: str = "agent"
-    cursor_agent_home: str = ""
-    cursor_agent_default_workspace: str = (
-        "/mnt/datos/Proyectos/taskboard"
-    )
-    cursor_agent_model: str = ""
-    cursor_agent_mode: str = "ask"
-    cursor_agent_timeout_sec: float = 300.0
-    cursor_agent_timeout_plan_sec: float = 1200.0
-    # Por defecto el agente no aprueba MCP solo: heredaría todos los MCP configurados por el usuario.
-    cursor_agent_approve_mcps: bool = False
-    cursor_api_key: str = ""
-    # Si false, no hace fallback a DeepSeek/Ollama cuando falla el CLI agent
-    cursor_agent_fallback_llm: bool = False
+    # Claude Code (`claude -p`) en el mini PC: modo Agent del panel (seguimiento y desarrollo
+    # sobre el repo del proyecto) y motor «agent» de AI_ENGINE. Solo administradores de workspace.
+    claude_code_enabled: bool = False
+    claude_code_bin: str = "claude"
+    # HOME propio y persistente (sesiones para --resume), sin la configuración del usuario.
+    claude_code_home: str = ""
+    # Token de `claude setup-token`; solo en el .env del API.
+    claude_code_oauth_token: str = ""
+    claude_code_model: str = ""
+    claude_code_default_workspace: str = "/mnt/datos/Proyectos/taskboard"
+    claude_code_timeout_sec: float = 1800.0
+    claude_code_max_turns: int = 60
+    # Gasto máximo por ejecución (0 = sin tope).
+    claude_code_max_budget_usd: float = 3.0
+    # MCP de TaskBoard dentro del contenedor, contra el propio API y con un JWT corto del usuario.
+    claude_code_mcp_server: str = "/opt/mcp-taskboard/server.py"
+    claude_code_mcp_api_url: str = "http://127.0.0.1:8000"
+    claude_code_token_minutes: int = 60
+    claude_code_git_name: str = "Claude Code (TaskBoard)"
+    claude_code_git_email: str = "claude-code@taskboard.invalid"
+    # Si true, cuando el motor «agent» falla en suggest/chat se usa DeepSeek u Ollama.
+    agent_fallback_llm: bool = False
 
     # Export TASKBOARD.md al workspace del proyecto (IDE / CLI fuera de la web)
     taskboard_md_filename: str = "TASKBOARD.md"

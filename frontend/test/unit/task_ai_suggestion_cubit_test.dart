@@ -47,7 +47,7 @@ void main() {
       (_) async => const Success(
         AiSuggestionResult(
           suggestions: [_suggestion],
-          provider: 'cursor_agent',
+          provider: 'claude_code',
         ),
       ),
     ),
@@ -58,7 +58,7 @@ void main() {
       TaskAiSuggestionState(
         status: TaskAiSuggestionStatus.success,
         suggestion: _suggestion,
-        providerLabel: 'Cursor Agent',
+        providerLabel: 'Claude Code',
       ),
     ],
   );

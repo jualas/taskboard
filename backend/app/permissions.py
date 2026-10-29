@@ -61,7 +61,7 @@ async def require_owner(conn: asyncpg.Connection, project_id: int, user_id: UUID
 
 
 async def is_workspace_admin(conn: asyncpg.Connection, user_id: UUID) -> bool:
-    """Acceso a carpetas del servidor y a Cursor Agent (WORKSPACE_ADMIN_EMAILS)."""
+    """Acceso a carpetas del servidor y a Claude Code (WORKSPACE_ADMIN_EMAILS)."""
     admins = workspace_admin_emails()
     if not admins:
         return False
@@ -75,5 +75,5 @@ async def require_workspace_admin(conn: asyncpg.Connection, user_id: UUID) -> No
 
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Solo los administradores del servidor pueden usar carpetas workspace y Cursor Agent",
+            "Solo los administradores del servidor pueden usar carpetas workspace y Claude Code",
         )

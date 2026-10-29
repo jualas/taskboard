@@ -1,4 +1,4 @@
-"""Persistencia de sesión Cursor Agent e historial por proyecto."""
+"""Persistencia de la sesión del agente (Claude Code) e historial por proyecto."""
 
 from __future__ import annotations
 

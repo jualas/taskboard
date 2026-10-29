@@ -22,7 +22,7 @@ class StreamAgentRunParams {
   final bool newSession;
 }
 
-/// Ejecución en vivo del CLI Cursor Agent. Devuelve un stream, así que no
+/// Ejecución en vivo de Claude Code. Devuelve un stream, así que no
 /// implementa `UseCase`.
 class StreamAgentRun {
   StreamAgentRun(this._repository);

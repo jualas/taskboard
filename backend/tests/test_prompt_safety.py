@@ -1,4 +1,4 @@
-from app.cursor_agent import messages_to_prompt
+from app.llm_text import messages_to_prompt
 from app.prompt_safety import DATA_NOTICE, new_boundary, wrap_untrusted
 
 

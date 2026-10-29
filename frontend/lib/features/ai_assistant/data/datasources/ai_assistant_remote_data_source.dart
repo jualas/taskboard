@@ -8,7 +8,7 @@ import '../../domain/entities/ai_task_suggestion.dart';
 import '../models/agent_session_model.dart';
 import '../models/ai_task_suggestion_model.dart';
 
-/// Llamadas a `/api/ai/*` y a la sesión/historial de Cursor Agent.
+/// Llamadas a `/api/ai/*` y a la sesión/historial de Claude Code.
 /// Los errores HTTP se lanzan como [ServerException] con el cuerpo de la
 /// respuesta, del que la UI extrae el `detail` de FastAPI.
 abstract class AiAssistantRemoteDataSource {

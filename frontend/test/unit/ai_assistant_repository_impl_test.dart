@@ -164,7 +164,7 @@ void main() {
       final results = await repo.streamAgentRun(prompt: 'p').toList();
       expect(
         results.single.failureOrNull?.message,
-        startsWith('Cursor Agent no disponible'),
+        startsWith('Claude Code no disponible'),
       );
     });
 

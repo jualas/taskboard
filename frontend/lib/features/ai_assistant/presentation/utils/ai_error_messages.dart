@@ -33,10 +33,6 @@ String describeAiFailure(Failure failure) {
   if (s.contains('502')) {
     final detail = fastApiDetailFromErrorString(s);
     if (detail != null) return detail;
-    if (s.contains('Authentication required') || s.contains('agent login')) {
-      return 'Cursor Agent: sesión no válida en el servidor. '
-          'Define CURSOR_API_KEY en el .env del API o ejecuta agent login en el mini PC.';
-    }
     return 'Error 502: fallo al hablar con el proveedor IA. Revisa logs del contenedor taskboard-api.';
   }
   if (s.contains('no disponible en modo local')) {
