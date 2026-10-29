@@ -7,10 +7,10 @@ String describeAiFailure(Failure failure) {
   if (s.contains('504') || s.contains('Gateway Timeout')) {
     final detail = fastApiDetailFromErrorString(s);
     if (detail != null) return detail;
-    return 'Cursor Agent tardó demasiado. Divide la petición o inténtalo de nuevo.';
+    return 'El asistente IA tardó demasiado. Divide la petición o inténtalo de nuevo.';
   }
   if (s.contains('TimeoutException') || s.contains('timed out')) {
-    return 'La consulta al Cursor Agent tardó demasiado. '
+    return 'La consulta al asistente IA tardó demasiado. '
         'Prueba un mensaje más corto o divide la petición (p. ej. primero alinear tareas, luego repo). '
         'Las peticiones complejas pueden tardar varios minutos.';
   }
