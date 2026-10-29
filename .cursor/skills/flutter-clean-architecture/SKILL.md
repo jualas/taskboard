@@ -79,6 +79,6 @@ Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stab
 
 Estado de `main` a 2026-10-25 (CA-0…CA-6 fusionadas, migración terminada):
 
-- `intl` y `path_provider` siguen en `pubspec.yaml` sin usarse en `lib/`.
+- Ninguna.
 
 Al resolver un punto, quitarlo de esta lista en el mismo commit.
