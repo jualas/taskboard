@@ -61,15 +61,16 @@ Desde la raíz del repo:
 ```bash
 scripts/flutter-check.sh            # analyze + test
 scripts/flutter-check.sh --vs-main  # además compara avisos con origin/main
+scripts/flutter-check.sh --vs-main --strict  # y falla con cualquier aviso (lo que exige el CI)
 ```
 
-Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stable` y devuelve la propiedad de los ficheros al usuario. Criterio: **tests en verde** y **ningún aviso de `flutter analyze` nuevo respecto a `main`** (comparación por tipo de aviso, sin números de línea). La base es `origin/main` recién descargado (no el `main` local, que puede estar desactualizado); `--base <ref>` permite otra y `--no-test` omite los tests. El CI ejecuta el mismo script en cada PR contra su rama base.
+Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stable` y devuelve la propiedad de los ficheros al usuario. Criterio: **tests en verde** y **ningún aviso de `flutter analyze`** (`main` está a cero y el CI ejecuta `flutter analyze` sin `--no-fatal-infos`). La comparación con la base (por tipo de aviso, sin números de línea) dice cuáles son nuevos. La base es `origin/main` recién descargado (no el `main` local, que puede estar desactualizado); `--base <ref>` permite otra y `--no-test` omite los tests. El CI ejecuta el mismo script en cada PR contra su rama base.
 
 ## 6. Entregas CA-x
 
 0. Empezar cada entrega en una **rama nueva desde `origin/main` actualizado** (`git fetch origin main:main && git switch -c refactor/clean-arch-<n>-<feature> main`). No seguir trabajando en una rama ya fusionada.
 1. Commits pequeños en la rama de la entrega (`refactor(<f>): … (CA-x)`, `test(<f>): … (CA-x)`; también `ci:`/`fix:` llevan `(CA-x)` si son parte de la entrega).
-2. `scripts/flutter-check.sh --vs-main` sin avisos nuevos y tests en verde.
+2. `scripts/flutter-check.sh --vs-main --strict` sin avisos y tests en verde.
 3. Prueba manual de las pantallas afectadas (`flutter run -d chrome` o build web).
 4. PR con tabla requisito → evidencia (fichero/test que lo demuestra).
 5. En TaskBoard (proyecto 10): marcar subtareas hechas de CA-x y de CA-R; la tarea pasa a `completed` solo con el PR fusionado.

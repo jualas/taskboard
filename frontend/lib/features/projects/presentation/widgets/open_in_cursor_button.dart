@@ -20,7 +20,7 @@ class OpenInCursor {
     }
 
     // Windows: C:/Users/...
-    final win = RegExp(r'^[A-Za-z]:/');
+    final win = RegExp('^[A-Za-z]:/');
     if (win.hasMatch(path)) {
       return 'cursor://file/$path';
     }
@@ -371,7 +371,7 @@ class OpenInCursorIconButton extends StatelessWidget {
   }
 }
 
-/// Resuelve workspace desde [ProjectsBloc] por id de proyecto.
+/// Resuelve workspace desde `ProjectsBloc` por id de proyecto.
 class OpenInCursorProjectButton extends StatelessWidget {
   const OpenInCursorProjectButton({
     super.key,

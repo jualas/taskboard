@@ -49,8 +49,8 @@ jobs:
           cache: true
       - name: flutter pub get
         run: flutter pub get
-      - name: flutter analyze (errores y warnings bloquean)
-        run: flutter analyze --no-fatal-infos
+      - name: flutter analyze (cualquier aviso bloquea, también los info)
+        run: flutter analyze
       - name: Sin avisos nuevos respecto a la base del PR
         if: github.event_name == 'pull_request'
         working-directory: .

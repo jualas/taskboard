@@ -81,7 +81,7 @@ class _WorkspaceSuggestionsPanelState extends State<_WorkspaceSuggestionsPanel> 
       await bloc
           .syncProjectWorkspace(widget.project.id)
           .then((r) => r.require('Sincronizar workspace'));
-      context.read<ProjectsBloc>().add(ProjectsLoadRequested());
+      bloc.add(ProjectsLoadRequested());
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -101,6 +101,12 @@ class _WorkspaceSuggestionsPanelState extends State<_WorkspaceSuggestionsPanel> 
     setState(() => _busyId = s.id);
     try {
       final bloc = context.read<ProjectsBloc>();
+      TasksBloc? tasksBloc;
+      if (s.isTask) {
+        try {
+          tasksBloc = context.read<TasksBloc>();
+        } catch (_) {}
+      }
       await bloc
           .applyWorkspaceSuggestion(
             SuggestionActionParams(
@@ -109,14 +115,8 @@ class _WorkspaceSuggestionsPanelState extends State<_WorkspaceSuggestionsPanel> 
             ),
           )
           .then((r) => r.require('Aplicar sugerencia'));
-      context.read<ProjectsBloc>().add(ProjectsLoadRequested());
-      if (s.isTask) {
-        try {
-          context.read<TasksBloc>().add(
-                TasksLoadRequested(projectId: widget.project.id),
-              );
-        } catch (_) {}
-      }
+      bloc.add(ProjectsLoadRequested());
+      tasksBloc?.add(TasksLoadRequested(projectId: widget.project.id));
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -144,7 +144,7 @@ class _WorkspaceSuggestionsPanelState extends State<_WorkspaceSuggestionsPanel> 
             ),
           )
           .then((r) => r.require('Descartar sugerencia'));
-      context.read<ProjectsBloc>().add(ProjectsLoadRequested());
+      bloc.add(ProjectsLoadRequested());
       await _load();
     } catch (e) {
       if (!mounted) return;
