@@ -107,7 +107,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
               );
               final failure = result.failureOrNull;
               if (failure != null) {
-                if (!context.mounted) return;
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(failure.message),
@@ -118,7 +118,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
               }
               if (!dialogContext.mounted) return;
               Navigator.of(dialogContext).pop();
-              if (!context.mounted) return;
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Contraseña actualizada'),
@@ -769,7 +769,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<ProjectStatus>(
-                  value: selectedStatus,
+                  initialValue: selectedStatus,
                   decoration: const InputDecoration(
                     labelText: 'Estado',
                   ),
@@ -941,6 +941,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
     } catch (_) {
       // La UI ya muestra errores en operaciones; aquí evitamos bloquear el modal.
     }
+    if (!mounted) return;
 
     await showDialog(
       context: context,
@@ -1043,7 +1044,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                 ),
                 const Divider(height: 24),
                 DropdownButtonFormField<String>(
-                  value: selectedUserId,
+                  initialValue: selectedUserId,
                   decoration: const InputDecoration(
                     labelText: 'Usuario registrado',
                   ),
@@ -1069,7 +1070,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<ProjectMemberRole>(
-                  value: selectedRole,
+                  initialValue: selectedRole,
                   decoration: const InputDecoration(labelText: 'Rol'),
                   items: ProjectMemberRole.values
                       .where((role) => role != ProjectMemberRole.owner)
@@ -1116,7 +1117,7 @@ class _ProjectsListScreenState extends State<ProjectsListScreen> {
                         selectedUserId = null;
                         await reloadMembers(setStateModal);
                       } catch (e) {
-                        if (mounted) {
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('No se pudo compartir: ${e.toString()}'),

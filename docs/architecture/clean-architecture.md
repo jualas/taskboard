@@ -116,7 +116,7 @@ features/<feature>/
 
 - **mocktail** y **bloc_test**; los data sources del API se prueban con `MockClient` de `package:http/testing.dart` (`TaskboardApiClient` acepta un `httpClient`).
 - `test/architecture/dependency_rule_test.dart`: domain sin Flutter/HTTP/JSON ni otras capas; presentation sin imports de `data/`; `lib/` solo con `core`, `features`, `shared` y `main.dart`; `core` sin imports de features (salvo `core/di`).
-- Verificación local y en CI: `scripts/flutter-check.sh` (analyze + test; con `--vs-main` o `--base`, sin avisos nuevos respecto a la base). El CI ejecuta además `flutter test --coverage` y publica la cobertura por capa con `scripts/coverage_by_layer.py`.
+- Verificación local y en CI: `scripts/flutter-check.sh` (analyze + test; con `--vs-main` o `--base`, sin avisos nuevos respecto a la base; con `--strict`, sin ningún aviso). Desde octubre de 2026 `main` no tiene avisos de `flutter analyze` y el CI no admite ninguno, tampoco los de nivel info. El CI ejecuta además `flutter test --coverage` y publica la cobertura por capa con `scripts/coverage_by_layer.py`.
 - Cobertura al cerrar CA-6 (2026-10-25, 134 tests): domain 84,4 %, data 62,5 %, presentation 65,6 %, core 53,1 %. Solo cuenta los ficheros que cargan los tests, así que en presentation la cifra es optimista.
 
 ## Migración (strangler)
@@ -204,4 +204,4 @@ Toma `features/tasks/` como referencia.
 4. **DI** (`core/di/injection.dart`): una función `_register<F>Stack` con `registerLazySingleton` para data sources, repositorio y casos de uso, y `registerFactory` para el BLoC; elegir la implementación API o local según haya `TaskboardApiClient`.
 5. **Rutas**: si hay pantallas nuevas, añadirlas en `shared/router/app_router.dart`.
 6. **Tests** (`test/unit/`): casos de uso con el repositorio simulado, repositorio con el data source simulado, data source del API con `MockClient`, modelos y BLoC con `bloc_test`.
-7. **Verificar**: `scripts/flutter-check.sh --vs-main` (tests en verde, ningún aviso nuevo; incluye el test de arquitectura).
+7. **Verificar**: `scripts/flutter-check.sh --vs-main --strict` (tests en verde, ningún aviso; incluye el test de arquitectura).

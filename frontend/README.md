@@ -169,8 +169,8 @@ flutter test test/architecture/dependency_rule_test.dart
 flutter test --coverage
 python3 ../scripts/coverage_by_layer.py coverage/lcov.info
 
-# Lo mismo que el CI, sin flutter local (usa Docker): analyze + test y avisos nuevos respecto a main
-../scripts/flutter-check.sh --vs-main
+# Lo mismo que el CI, sin flutter local (usa Docker): analyze + test, sin ningún aviso
+../scripts/flutter-check.sh --vs-main --strict
 ```
 
 Cobertura de líneas al cerrar la migración (2026-10-25, 134 tests):

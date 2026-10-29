@@ -99,7 +99,7 @@ class _WorkspaceInventoryPanelState extends State<_WorkspaceInventoryPanel> {
             ),
           )
           .then((r) => r.require('Crear proyecto'));
-      context.read<ProjectsBloc>().add(ProjectsLoadRequested());
+      bloc.add(ProjectsLoadRequested());
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +133,7 @@ class _WorkspaceInventoryPanelState extends State<_WorkspaceInventoryPanel> {
             ),
           )
           .then((r) => r.require('Vincular proyecto'));
-      context.read<ProjectsBloc>().add(ProjectsLoadRequested());
+      bloc.add(ProjectsLoadRequested());
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

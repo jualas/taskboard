@@ -600,7 +600,7 @@ class _TaskFormState extends State<_TaskFormBody> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<TaskStatus>(
-                      value: _status,
+                      initialValue: _status,
                       decoration: const InputDecoration(
                         labelText: 'Estado',
                         prefixIcon: Icon(Icons.flag),
@@ -621,7 +621,7 @@ class _TaskFormState extends State<_TaskFormBody> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: DropdownButtonFormField<TaskComplexity>(
-                      value: _complexity,
+                      initialValue: _complexity,
                       decoration: const InputDecoration(
                         labelText: 'Complejidad',
                         prefixIcon: Icon(Icons.speed),

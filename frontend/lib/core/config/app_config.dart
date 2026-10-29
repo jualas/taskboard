@@ -74,6 +74,6 @@ class TaskboardApiConfig {
         'proxyPrefix': proxyPrefix,
       };
 
-  /// Coincide con la lógica de [main]: web puede usar solo proxy sin `baseUrl`.
+  /// Coincide con la lógica de `main`: web puede usar solo proxy sin `baseUrl`.
   bool get isEnabled => baseUrl.trim().isNotEmpty || useSameOriginProxy;
 }
