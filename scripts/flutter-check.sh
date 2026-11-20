@@ -9,7 +9,8 @@
 set -euo pipefail
 
 ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-IMAGE="ghcr.io/cirruslabs/flutter:stable"
+# Versión fijada, igual que en el CI (.github/workflows/tests.yml): subirla a la vez en los dos sitios.
+IMAGE="ghcr.io/cirruslabs/flutter:3.41.6"
 BASE=""
 RUN_TESTS=1
 STRICT=0

@@ -45,7 +45,10 @@ jobs:
           fetch-depth: 0 # origin/<rama base> para comparar avisos en PRs
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
+          # Fijada: la misma versión con la que se compila la web de producción
+          # (scripts/flutter-check.sh). Subirla a la vez en los dos sitios.
           channel: stable
+          flutter-version: 3.41.6
           cache: true
       - name: flutter pub get
         run: flutter pub get
