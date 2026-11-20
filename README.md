@@ -105,7 +105,7 @@ cp .env.example .env
 
 # Compilar la web con la versión fijada de Flutter, sin instalar nada (la imagen se construye una vez)
 docker build -t taskboard-flutter:3.50.1 -f scripts/flutter.Dockerfile scripts
-docker run --rm -v "$PWD/frontend":/app -w /app taskboard-flutter:3.50.1 \
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/frontend":/app -w /app taskboard-flutter:3.50.1 \
   bash -lc "flutter pub get && flutter build web --release"
 
 docker compose up -d --build

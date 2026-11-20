@@ -5,7 +5,7 @@
 #   --strict      falla con cualquier aviso de analyze (como el CI, que ya no admite ninguno)
 #   --no-test     no ejecuta flutter test (el CI ya lo lanza con cobertura)
 # Falla si fallan los tests, si hay avisos de analyze nuevos respecto a la base o, con --strict, si hay alguno.
-# Usa flutter local si existe; si no, una imagen Docker con la versión fijada, construida desde scripts/flutter.Dockerfile (y devuelve la propiedad de los ficheros).
+# Usa flutter local si existe; si no, una imagen Docker con la versión fijada, construida desde scripts/flutter.Dockerfile y ejecutada con tu uid.
 set -euo pipefail
 
 ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
@@ -38,13 +38,15 @@ run_flutter() { # $1 = directorio frontend, $2 = comandos
   if command -v flutter >/dev/null 2>&1; then
     (cd "$1" && bash -c "$2")
   else
-    if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-      echo "== Construyendo la imagen $IMAGE (solo la primera vez)" >&2
-      docker build -q -t "$IMAGE" --build-arg FLUTTER_VERSION="$FLUTTER_VERSION" \
-        -f "$ROOT/scripts/flutter.Dockerfile" "$ROOT/scripts" >&2
+    # Se reconstruye si falta o si cambió el Dockerfile (etiqueta con su hash).
+    local dockerfile="$ROOT/scripts/flutter.Dockerfile" hash
+    hash="$(sha256sum "$dockerfile" | cut -c1-16)"
+    if [[ "$(docker image inspect -f '{{index .Config.Labels "dockerfile-sha"}}' "$IMAGE" 2>/dev/null)" != "$hash" ]]; then
+      echo "== Construyendo la imagen $IMAGE" >&2
+      docker build -q -t "$IMAGE" --label dockerfile-sha="$hash" \
+        --build-arg FLUTTER_VERSION="$FLUTTER_VERSION" -f "$dockerfile" "$ROOT/scripts" >&2
     fi
-    docker run --rm -v "$1":/app -w /app "$IMAGE" \
-      bash -c "$2; rc=\$?; chown -R $(id -u):$(id -g) /app; exit \$rc"
+    docker run --rm -u "$(id -u):$(id -g)" -v "$1":/app -w /app "$IMAGE" bash -c "$2"
   fi
 }
 
