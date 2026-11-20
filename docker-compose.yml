@@ -1,7 +1,8 @@
 # TaskBoard en local: Postgres + API (FastAPI) + web (Flutter build servida por Caddy).
 #
 #   cp .env.example .env            # rellena JWT_SECRET (y DEEPSEEK_API_KEY si quieres IA)
-#   docker run --rm -v "$PWD/frontend":/app -w /app ghcr.io/cirruslabs/flutter:stable \
+#   docker build -t taskboard-flutter:3.50.1 -f scripts/flutter.Dockerfile scripts   # una vez
+#   docker run --rm -u "$(id -u):$(id -g)" -v "$PWD/frontend":/app -w /app taskboard-flutter:3.50.1 \
 #     bash -lc "flutter pub get && flutter build web --release"
 #   docker compose up -d --build
 #

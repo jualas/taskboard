@@ -88,6 +88,10 @@ analyzer:
     - "**/l10n/app_localizations.dart"
     - "**/l10n/app_localizations_*.dart"
     - "**/scripts/*.dart"
+    - build/**
+    - android/**
+    - web/**
+    - windows/**
   
   errors:
     # Errores críticos que deben ser corregidos

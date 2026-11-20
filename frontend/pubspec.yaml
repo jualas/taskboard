@@ -53,6 +53,7 @@ dependencies:
   
   # Tipografías personalizadas
   google_fonts: ^6.1.0
+  material_ui: ^1.11.1
 
 dev_dependencies:
   flutter_test:
