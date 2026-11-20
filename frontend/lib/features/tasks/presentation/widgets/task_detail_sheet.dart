@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/task.dart';
+import '../utils/copy_task_text.dart';
 import '../../../../shared/themes/app_theme.dart';
 
 /// Muestra descripción completa, checklist interactivo, etiquetas y metadatos.
@@ -87,130 +88,146 @@ class _TaskDetailSheetBodyState extends State<_TaskDetailSheetBody> {
         Flexible(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  task.title,
-                  style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _statusChip(task.status),
-                    _complexityChip(task.complexity),
-                    if (task.estimatedHours != null)
-                      Chip(
-                        avatar: const Icon(Icons.schedule, size: 16, color: AppColors.accentPrimary),
-                        label: Text('${task.estimatedHours} h'),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    if (task.dueDate != null)
-                      Chip(
-                        avatar: const Icon(Icons.event, size: 16, color: AppColors.accentPrimary),
-                        label: Text(
-                          '${task.dueDate!.day}/${task.dueDate!.month}/${task.dueDate!.year}',
-                        ),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                  ],
-                ),
-                if (task.tags.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+            // Todo el texto del detalle se puede seleccionar y copiar (en web, Flutter
+            // pinta el texto en canvas y sin esto no se puede seleccionar).
+            child: SelectionArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                   Text(
-                    'Etiquetas',
-                    style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                    task.title,
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: task.tags
-                        .map(
-                          (t) => Chip(
-                            label: Text(t),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
-                            backgroundColor: AppColors.backgroundDark.withValues(alpha: 0.08),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-                if (task.description.trim().isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text(
-                    'Descripción',
-                    style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    task.description,
-                    style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
-                          height: 1.45,
-                        ),
-                  ),
-                ],
-                if (task.hasSubtasks) ...[
-                  const SizedBox(height: 20),
-                  Text(
-                    'Checklist (${task.subtasksDoneCount}/${task.subtasksTotalCount})',
-                    style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                  ),
-                  if (widget.onChecklistPersist != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Forma parte de la tarea: se guarda al marcar.',
-                      style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                    children: [
+                      _statusChip(task.status),
+                      _complexityChip(task.complexity),
+                      if (task.estimatedHours != null)
+                        Chip(
+                          avatar: const Icon(
+                            Icons.schedule,
+                            size: 16,
                             color: AppColors.accentPrimary,
                           ),
+                          label: Text('${task.estimatedHours} h'),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      if (task.dueDate != null)
+                        Chip(
+                          avatar: const Icon(
+                            Icons.event,
+                            size: 16,
+                            color: AppColors.accentPrimary,
+                          ),
+                          label: Text(
+                            '${task.dueDate!.day}/${task.dueDate!.month}/${task.dueDate!.year}',
+                          ),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                    ],
+                  ),
+                  if (task.tags.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Etiquetas',
+                      style: Theme.of(sheetContext).textTheme.titleSmall
+                          ?.copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: task.tags
+                          .map(
+                            (t) => Chip(
+                              label: Text(t),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                              backgroundColor: AppColors.backgroundDark
+                                  .withValues(alpha: 0.08),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ],
-                  const SizedBox(height: 8),
-                  ...task.subtasks.map(
-                    (s) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Checkbox(
-                            value: s.isDone,
-                            onChanged: widget.onChecklistPersist == null
-                                ? null
-                                : (v) => _toggleSubtask(s, v),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 10),
-                              child: Text(
-                                s.title,
-                                style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
-                                      decoration: s.isDone ? TextDecoration.lineThrough : null,
-                                      color: s.isDone
-                                          ? AppColors.textSecondary
-                                          : AppColors.textPrimary,
-                                    ),
+                  if (task.description.trim().isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      'Descripción',
+                      style: Theme.of(sheetContext).textTheme.titleSmall
+                          ?.copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      task.description,
+                      style: Theme.of(
+                        sheetContext,
+                      ).textTheme.bodyMedium?.copyWith(height: 1.45),
+                    ),
+                  ],
+                  if (task.hasSubtasks) ...[
+                    const SizedBox(height: 20),
+                    Text(
+                      'Checklist (${task.subtasksDoneCount}/${task.subtasksTotalCount})',
+                      style: Theme.of(sheetContext).textTheme.titleSmall
+                          ?.copyWith(color: AppColors.textSecondary),
+                    ),
+                    if (widget.onChecklistPersist != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Forma parte de la tarea: se guarda al marcar.',
+                        style: Theme.of(sheetContext).textTheme.bodySmall
+                            ?.copyWith(color: AppColors.accentPrimary),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    ...task.subtasks.map(
+                      (s) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Checkbox(
+                              value: s.isDone,
+                              onChanged: widget.onChecklistPersist == null
+                                  ? null
+                                  : (v) => _toggleSubtask(s, v),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: Text(
+                                  s.title,
+                                  style: Theme.of(sheetContext)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        decoration: s.isDone
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                        color: s.isDone
+                                            ? AppColors.textSecondary
+                                            : AppColors.textPrimary,
+                                      ),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -218,6 +235,14 @@ class _TaskDetailSheetBodyState extends State<_TaskDetailSheetBody> {
           padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + widget.bottomPadding),
           child: Row(
             children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => copyTaskToClipboard(_displayed),
+                  icon: const Icon(Icons.copy_outlined),
+                  label: const Text('Copiar'),
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
@@ -235,7 +260,10 @@ class _TaskDetailSheetBodyState extends State<_TaskDetailSheetBody> {
                     Navigator.of(sheetContext).pop();
                     widget.onDelete();
                   },
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.error,
+                  ),
                   label: const Text(
                     'Eliminar',
                     style: TextStyle(color: AppColors.error),

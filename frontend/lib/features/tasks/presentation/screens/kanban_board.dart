@@ -11,6 +11,7 @@ import '../../../ai_assistant/presentation/widgets/project_ai_chat_sheet.dart';
 import '../../../projects/presentation/widgets/project_screen_title.dart';
 import '../../../projects/presentation/widgets/open_in_cursor_button.dart';
 import '../widgets/task_detail_sheet.dart';
+import '../utils/copy_task_text.dart';
 import '../../../projects/presentation/utils/export_taskboard_md_action.dart';
 import '../../../projects/presentation/widgets/ide_cursor_session_sheet.dart';
 
@@ -432,6 +433,16 @@ class _KanbanBoardState extends State<KanbanBoard> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Copiar texto',
+                      icon: const Icon(Icons.copy_outlined),
+                      iconSize: 16,
+                      color: AppColors.textSecondary,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      onPressed: () => copyTaskToClipboard(task),
                     ),
                     Icon(
                       Icons.drag_indicator,
