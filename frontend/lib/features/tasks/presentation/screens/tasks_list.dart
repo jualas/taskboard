@@ -11,6 +11,7 @@ import '../../../ai_assistant/presentation/widgets/project_ai_chat_sheet.dart';
 import '../../../projects/presentation/widgets/project_screen_title.dart';
 import '../../../projects/presentation/widgets/open_in_cursor_button.dart';
 import '../widgets/task_detail_sheet.dart';
+import '../utils/copy_task_text.dart';
 
 class TasksList extends StatefulWidget {
   final int projectId;
@@ -430,6 +431,16 @@ class _TasksListState extends State<TasksList> {
                 ),
               ),
             const PopupMenuItem(
+              value: 'copy',
+              child: Row(
+                children: [
+                  Icon(Icons.copy_outlined),
+                  SizedBox(width: 8),
+                  Text('Copiar texto'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
               value: 'edit',
               child: Row(
                 children: [
@@ -507,6 +518,9 @@ class _TasksListState extends State<TasksList> {
             projectId: widget.projectId,
           ),
         );
+        break;
+      case 'copy':
+        copyTaskToClipboard(task);
         break;
       case 'edit':
         _editTask(task);
