@@ -5,12 +5,13 @@
 #   --strict      falla con cualquier aviso de analyze (como el CI, que ya no admite ninguno)
 #   --no-test     no ejecuta flutter test (el CI ya lo lanza con cobertura)
 # Falla si fallan los tests, si hay avisos de analyze nuevos respecto a la base o, con --strict, si hay alguno.
-# Usa flutter local si existe; si no, la imagen Docker cirruslabs (y devuelve la propiedad de los ficheros).
+# Usa flutter local si existe; si no, una imagen Docker con la versión fijada, construida desde scripts/flutter.Dockerfile (y devuelve la propiedad de los ficheros).
 set -euo pipefail
 
 ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 # Versión fijada, igual que en el CI (.github/workflows/tests.yml): subirla a la vez en los dos sitios.
-IMAGE="ghcr.io/cirruslabs/flutter:3.41.6"
+FLUTTER_VERSION="3.50.1"
+IMAGE="taskboard-flutter:$FLUTTER_VERSION"
 BASE=""
 RUN_TESTS=1
 STRICT=0
@@ -37,6 +38,11 @@ run_flutter() { # $1 = directorio frontend, $2 = comandos
   if command -v flutter >/dev/null 2>&1; then
     (cd "$1" && bash -c "$2")
   else
+    if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+      echo "== Construyendo la imagen $IMAGE (solo la primera vez)" >&2
+      docker build -q -t "$IMAGE" --build-arg FLUTTER_VERSION="$FLUTTER_VERSION" \
+        -f "$ROOT/scripts/flutter.Dockerfile" "$ROOT/scripts" >&2
+    fi
     docker run --rm -v "$1":/app -w /app "$IMAGE" \
       bash -c "$2; rc=\$?; chown -R $(id -u):$(id -g) /app; exit \$rc"
   fi

@@ -64,7 +64,7 @@ scripts/flutter-check.sh --vs-main  # además compara avisos con origin/main
 scripts/flutter-check.sh --vs-main --strict  # y falla con cualquier aviso (lo que exige el CI)
 ```
 
-Usa `flutter` local si existe; si no, la imagen `ghcr.io/cirruslabs/flutter:stable` y devuelve la propiedad de los ficheros al usuario. Criterio: **tests en verde** y **ningún aviso de `flutter analyze`** (`main` está a cero y el CI ejecuta `flutter analyze` sin `--no-fatal-infos`). La comparación con la base (por tipo de aviso, sin números de línea) dice cuáles son nuevos. La base es `origin/main` recién descargado (no el `main` local, que puede estar desactualizado); `--base <ref>` permite otra y `--no-test` omite los tests. El CI ejecuta el mismo script en cada PR contra su rama base.
+Usa `flutter` local si existe; si no, la imagen `taskboard-flutter:<versión fijada>` (la construye desde `scripts/flutter.Dockerfile` la primera vez) y devuelve la propiedad de los ficheros al usuario. Criterio: **tests en verde** y **ningún aviso de `flutter analyze`** (`main` está a cero y el CI ejecuta `flutter analyze` sin `--no-fatal-infos`). La comparación con la base (por tipo de aviso, sin números de línea) dice cuáles son nuevos. La base es `origin/main` recién descargado (no el `main` local, que puede estar desactualizado); `--base <ref>` permite otra y `--no-test` omite los tests. El CI ejecuta el mismo script en cada PR contra su rama base.
 
 ## 6. Entregas CA-x
 

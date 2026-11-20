@@ -103,8 +103,9 @@ Requisitos: Docker con Compose.
 cp .env.example .env
 # Edita .env: JWT_SECRET (openssl rand -base64 48) y, si quieres IA, DEEPSEEK_API_KEY
 
-# Compilar la web (con la imagen oficial de Flutter, sin instalar nada)
-docker run --rm -v "$PWD/frontend":/app -w /app ghcr.io/cirruslabs/flutter:stable \
+# Compilar la web con la versión fijada de Flutter, sin instalar nada (la imagen se construye una vez)
+docker build -t taskboard-flutter:3.50.1 -f scripts/flutter.Dockerfile scripts
+docker run --rm -v "$PWD/frontend":/app -w /app taskboard-flutter:3.50.1 \
   bash -lc "flutter pub get && flutter build web --release"
 
 docker compose up -d --build

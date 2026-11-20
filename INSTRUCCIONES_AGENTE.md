@@ -103,8 +103,8 @@ Documento técnico de continuidad para agentes (estado operativo real y procedim
 ## 6) Procedimiento build + publicación (obligatorio)
 Ejecutar desde `frontend/`:
 
-1. Build (ejemplo con imagen Flutter):
-   - `docker run --rm -v "$PWD":/app -w /app ghcr.io/cirruslabs/flutter:3.41.6 bash -lc "flutter pub get && flutter build web --release"`
+1. Build con la imagen de la versión fijada (la crea `scripts/flutter-check.sh` la primera vez a partir de `scripts/flutter.Dockerfile`):
+   - `docker run --rm -v "$PWD":/app -w /app taskboard-flutter:3.50.1 bash -lc "flutter pub get && flutter build web --release"`
 2. **Cache-bust del túnel** (si el dominio no refleja el build):
    - Desde la raíz del repo: `bash scripts/patch-web-index-cache-bust.sh frontend/build/web`
 3. Publicar en ruta activa (copiar `build/web` a `/mnt/datos/docker/taskboard-web/public`).
